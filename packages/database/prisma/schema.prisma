@@ -55,17 +55,20 @@ model Person {
 
 // Comanda individual (uma por pessoa)
 model Tab {
-  id        String    @id @default(cuid())
-  tableId   String
-  total     Float     @default(0)
-  status    TabStatus @default(OPEN)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  closedAt  DateTime?
+  id            String         @id @default(cuid())
+  tableId       String
+  total         Float          @default(0)
+  status        TabStatus      @default(OPEN)
+  paymentMethod PaymentMethod?
+  paidAmount    Float?         // Valor pago pelo cliente
+  changeAmount  Float?         // Troco (se pagamento em dinheiro)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  closedAt      DateTime?
   
-  table     Table     @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  person    Person?
-  orders    Order[]
+  table         Table          @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  person        Person?
+  orders        Order[]
   
   @@map("tabs")
 }
@@ -132,4 +135,11 @@ enum MenuCategory {
   DESSERT
   BEVERAGE
   ALCOHOLIC_BEVERAGE
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
 }

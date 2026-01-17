@@ -85,16 +85,43 @@ export class TabController {
   async close(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
+      const { paymentMethod, paidAmount } = req.body;
+
+      // Buscar a comanda com o total
+      const existingTab = await prisma.tab.findUnique({
+        where: { id },
+        select: { total: true, status: true },
+      });
+
+      if (!existingTab) {
+        throw new AppError(404, 'Comanda não encontrada');
+      }
+
+      if (existingTab.status === 'CLOSED') {
+        throw new AppError(400, 'Comanda já está fechada');
+      }
+
+      // Calcular troco (se pagamento em dinheiro)
+      const changeAmount = paymentMethod === 'CASH' 
+        ? Math.max(0, paidAmount - existingTab.total)
+        : 0;
 
       const tab = await prisma.tab.update({
         where: { id },
         data: {
           status: 'CLOSED',
           closedAt: new Date(),
+          paymentMethod,
+          paidAmount,
+          changeAmount,
         },
         include: {
           person: true,
-          orders: true,
+          orders: {
+            include: {
+              menuItem: true,
+            },
+          },
         },
       });
 

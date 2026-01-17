@@ -22,3 +22,10 @@ export const MENU_CATEGORY_LABELS = {
   BEVERAGE: 'Bebida',
   ALCOHOLIC_BEVERAGE: 'Bebida Alcoólica',
 } as const;
+
+export const PAYMENT_METHOD_LABELS = {
+  CASH: 'Dinheiro',
+  CREDIT_CARD: 'Cartão de Crédito',
+  DEBIT_CARD: 'Cartão de Débito',
+  PIX: 'PIX',
+} as const;

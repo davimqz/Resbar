@@ -5,6 +5,7 @@ import TableDetailPage from './pages/TableDetailPage';
 import KitchenPage from './pages/KitchenPage';
 import MenuPage from './pages/MenuPage';
 import WaitersPage from './pages/WaitersPage';
+import { PaymentPage } from './pages/PaymentPage';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route index element={<Navigate to="/tables" replace />} />
           <Route path="tables" element={<TablesPage />} />
           <Route path="tables/:id" element={<TableDetailPage />} />
+          <Route path="tabs/:tabId/payment" element={<PaymentPage />} />
           <Route path="kitchen" element={<KitchenPage />} />
           <Route path="menu" element={<MenuPage />} />
           <Route path="waiters" element={<WaitersPage />} />

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TableStatus, TabStatus, OrderStatus, MenuCategory } from '../types';
+import { TableStatus, TabStatus, OrderStatus, MenuCategory, PaymentMethod } from '../types';
 
 // Waiter schemas
 export const createWaiterSchema = z.object({
@@ -75,4 +75,10 @@ export const paginationSchema = z.object({
 
 export const idParamSchema = z.object({
   id: z.string(),
+});
+
+// Payment schemas
+export const closeTabSchema = z.object({
+  paymentMethod: z.nativeEnum(PaymentMethod),
+  paidAmount: z.number().positive('Valor pago deve ser positivo'),
 });

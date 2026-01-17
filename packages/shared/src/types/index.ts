@@ -26,6 +26,13 @@ export enum MenuCategory {
   ALCOHOLIC_BEVERAGE = 'ALCOHOLIC_BEVERAGE',
 }
 
+export enum PaymentMethod {
+  CASH = 'CASH',
+  CREDIT_CARD = 'CREDIT_CARD',
+  DEBIT_CARD = 'DEBIT_CARD',
+  PIX = 'PIX',
+}
+
 // DTOs - Waiter
 export interface WaiterDTO {
   id: string;
@@ -93,6 +100,9 @@ export interface TabDTO {
   tableId: string;
   total: number;
   status: TabStatus;
+  paymentMethod: PaymentMethod | null;
+  paidAmount: number | null;
+  changeAmount: number | null;
   person?: PersonDTO;
   createdAt: Date;
   updatedAt: Date;
@@ -192,4 +202,10 @@ export interface TableCalculation {
   tableNumber: number;
   tabs: TabCalculation[];
   grandTotal: number;
+}
+
+// Payment types
+export interface CloseTabDTO {
+  paymentMethod: PaymentMethod;
+  paidAmount: number;
 }

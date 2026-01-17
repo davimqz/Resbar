@@ -178,6 +178,18 @@ export default function TableDetailPage() {
         )}
       </div>
 
+      {/* Total da Mesa - movido para o topo */}
+      {openTabs.length > 0 && calculation && (
+        <div className="bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-400 rounded-lg p-6 mb-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Total da Mesa</h2>
+            <div className="text-4xl font-bold text-green-700">
+              R$ {calculation.grandTotal.toFixed(2)}
+            </div>
+          </div>
+        </div>
+      )}
+
       {openTabs.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg">
           <p className="text-gray-500">Nenhuma pessoa na mesa</p>
@@ -192,15 +204,26 @@ export default function TableDetailPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {openTabs.map((tab: any) => (
-              <div key={tab.id} className="bg-white shadow-sm rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold">{tab.person?.name || 'Sem nome'}</h3>
-                  <button
-                    onClick={() => deletePerson.mutate(tab.person.id)}
-                    className="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    Remover
-                  </button>
+              <div key={tab.id} className="bg-white shadow-lg rounded-lg p-6 border-2 border-gray-100">
+                {/* Cabeçalho com nome do cliente */}
+                <div className="mb-4 pb-4 border-b-2 border-gray-200">
+                  <h3 className="text-2xl font-bold text-black mb-2">
+                    {tab.person?.name || 'Sem nome'}
+                  </h3>
+                  <div className="flex gap-2">
+                    <Link
+                      to={`/tabs/${tab.id}/payment`}
+                      className="px-3 py-1 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700"
+                    >
+                      Fechar Conta
+                    </Link>
+                    <button
+                      onClick={() => deletePerson.mutate(tab.person.id)}
+                      className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                    >
+                      Remover
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -208,42 +231,42 @@ export default function TableDetailPage() {
                     setSelectedTabId(tab.id);
                     setShowAddOrder(true);
                   }}
-                  className="w-full mb-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  className="w-full mb-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium"
                 >
-                  Adicionar Pedido
+                  + Adicionar Pedido
                 </button>
 
+                {/* Pedidos */}
                 {tab.orders && tab.orders.length > 0 ? (
-                  <div className="space-y-2">
-                    {tab.orders.map((order: any) => (
-                      <div key={order.id} className="flex justify-between text-sm border-b pb-2">
-                        <div>
-                          <p className="font-medium">{order.menuItem.name}</p>
-                          <p className="text-gray-600">Qtd: {order.quantity}</p>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="space-y-3">
+                      {tab.orders.map((order: any) => (
+                        <div key={order.id} className="flex justify-between items-center bg-white p-3 rounded border">
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">{order.menuItem.name}</p>
+                            <p className="text-sm text-gray-600 mt-1">Quantidade: {order.quantity}</p>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900 ml-4">
+                            R$ {order.totalPrice.toFixed(2)}
+                          </p>
                         </div>
-                        <p className="font-medium">R$ {order.totalPrice.toFixed(2)}</p>
-                      </div>
-                    ))}
-                    <div className="flex justify-between font-bold pt-2">
-                      <span>Total:</span>
-                      <span>R$ {tab.total.toFixed(2)}</span>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t-2 border-gray-300">
+                      <span className="text-lg font-bold text-gray-900">Total:</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        R$ {tab.total.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm text-center">Nenhum pedido ainda</p>
+                  <div className="bg-gray-50 rounded-lg p-8 text-center">
+                    <p className="text-gray-500">Nenhum pedido ainda</p>
+                  </div>
                 )}
               </div>
             ))}
           </div>
-
-          {calculation && (
-            <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Total da Mesa</h2>
-              <div className="text-3xl font-bold text-green-700">
-                R$ {calculation.grandTotal.toFixed(2)}
-              </div>
-            </div>
-          )}
         </>
       )}
 

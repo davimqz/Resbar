@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TableStatus, TabStatus, OrderStatus, MenuCategory, PaymentMethod } from '../types';
+import { TableStatus, OrderStatus, MenuCategory, PaymentMethod } from '../types';
 
 // Waiter schemas
 export const createWaiterSchema = z.object({

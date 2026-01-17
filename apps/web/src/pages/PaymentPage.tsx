@@ -55,43 +55,61 @@ export function PaymentPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold mb-6">Fechar Conta</h1>
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-4 w-full max-w-full">
+      <div className="max-w-2xl mx-auto w-full">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full">
+          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Fechar Conta</h1>
 
-        {/* Resumo da comanda */}
-        <div className="mb-6 p-4 bg-gray-50 rounded">
-          <h2 className="font-semibold text-lg mb-3">{calculation.personName}</h2>
+          {/* Resumo da comanda */}
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 rounded border-2 border-gray-200">
+            <h2 className="font-bold text-lg sm:text-xl mb-3 sm:mb-4 text-black break-words">
+              {calculation.personName || 'Cliente'}
+            </h2>
           
-          <div className="space-y-2 mb-4">
-            {calculation.items.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span>
-                  {item.quantity}x {item.menuItem?.name}
-                </span>
-                <span>R$ {item.totalPrice.toFixed(2)}</span>
+          {calculation.items && calculation.items.length > 0 ? (
+            <div>
+              <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
+                {calculation.items.map((item) => (
+                  <div key={item.id} className="flex justify-between items-start sm:items-center bg-white p-2 sm:p-3 rounded border gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm sm:text-base text-gray-900 break-words">
+                        {item.menuItem?.name || 'Item'}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        Quantidade: {item.quantity}
+                      </p>
+                    </div>
+                    <span className="font-bold text-sm sm:text-base text-gray-900 whitespace-nowrap ml-2">
+                      R$ {item.totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="border-t pt-2 mt-2">
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total:</span>
-              <span>R$ {total.toFixed(2)}</span>
+              <div className="border-t-2 pt-2 sm:pt-3 mt-2 sm:mt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg sm:text-xl font-bold text-gray-900">Total:</span>
+                  <span className="text-xl sm:text-2xl font-bold text-green-600">
+                    R$ {total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4 text-sm sm:text-base">Nenhum item na comanda</p>
+          )}
         </div>
 
         {/* Formulário de pagamento */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 w-full">
+          <div className="w-full">
             <label className="block text-sm font-medium mb-2">
               Método de Pagamento
             </label>
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full max-w-full border rounded px-3 py-2 text-sm sm:text-base"
             >
               {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -113,11 +131,11 @@ export function PaymentPage() {
                 value={paidAmount}
                 onChange={(e) => setPaidAmount(e.target.value)}
                 placeholder={`Mínimo: R$ ${total.toFixed(2)}`}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 text-sm sm:text-base"
                 required
               />
               {paidAmount && change > 0 && (
-                <p className="mt-2 text-green-600 font-semibold">
+                <p className="mt-2 text-green-600 font-semibold text-sm sm:text-base">
                   Troco: R$ {change.toFixed(2)}
                 </p>
               )}
@@ -125,23 +143,23 @@ export function PaymentPage() {
           )}
 
           {paymentMethod !== PaymentMethod.CASH && (
-            <div className="p-3 bg-blue-50 rounded text-sm">
+            <div className="p-3 bg-blue-50 rounded text-xs sm:text-sm">
               <p className="font-medium">Valor a cobrar: R$ {total.toFixed(2)}</p>
             </div>
           )}
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex-1 px-4 py-2 border rounded hover:bg-gray-50"
+              className="w-full sm:flex-1 px-4 py-3 sm:py-2 border-2 border-gray-300 rounded hover:bg-gray-50 text-gray-700 font-medium text-sm sm:text-base"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={closeTab.isPending}
-              className="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300"
+              className="w-full sm:flex-1 px-4 py-3 sm:py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300 font-medium text-sm sm:text-base"
             >
               {closeTab.isPending ? 'Processando...' : 'Confirmar Pagamento'}
             </button>
@@ -149,5 +167,6 @@ export function PaymentPage() {
         </form>
       </div>
     </div>
+  </div>
   );
 }

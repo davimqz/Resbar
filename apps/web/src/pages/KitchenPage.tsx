@@ -1,5 +1,5 @@
 import { useOrder } from '../hooks/useOrder';
-import { OrderStatus, ORDER_STATUS_LABELS } from '@resbar/shared';
+import { OrderStatus } from '@resbar/shared';
 
 export default function KitchenPage() {
   const { useKitchenOrders, updateOrderStatus } = useOrder();

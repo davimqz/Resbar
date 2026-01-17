@@ -79,6 +79,8 @@ export const idParamSchema = z.object({
 
 // Payment schemas
 export const closeTabSchema = z.object({
-  paymentMethod: z.nativeEnum(PaymentMethod),
-  paidAmount: z.number().positive('Valor pago deve ser positivo'),
+  body: z.object({
+    paymentMethod: z.nativeEnum(PaymentMethod),
+    paidAmount: z.number().positive('Valor pago deve ser positivo'),
+  }),
 });

@@ -31,8 +31,19 @@ export const useTab = () => {
 
   const useCloseTab = () => {
     return useMutation({
-      mutationFn: async ({ tabId, payment }: { tabId: string; payment: CloseTabDTO }) => {
-        const { data } = await api.patch(`/tabs/${tabId}/close`, payment);
+      mutationFn: async ({ 
+        tabId, 
+        paymentMethod, 
+        paidAmount 
+      }: { 
+        tabId: string; 
+        paymentMethod: CloseTabDTO['paymentMethod'];
+        paidAmount: number;
+      }) => {
+        const { data } = await api.patch(`/tabs/${tabId}/close`, {
+          paymentMethod,
+          paidAmount,
+        });
         return data;
       },
       onSuccess: () => {

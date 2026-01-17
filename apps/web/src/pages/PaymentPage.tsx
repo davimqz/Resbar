@@ -43,12 +43,18 @@ export function PaymentPage() {
     }
 
     try {
+      console.log('Enviando pagamento:', {
+        tabId,
+        paymentMethod,
+        paidAmount: amount,
+        paymentMethodType: typeof paymentMethod,
+        paidAmountType: typeof amount,
+      });
+      
       await closeTab.mutateAsync({
         tabId,
-        payment: {
-          paymentMethod,
-          paidAmount: amount,
-        },
+        paymentMethod,
+        paidAmount: amount,
       });
 
       alert('Pagamento realizado com sucesso!');

@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Garçons do estabelecimento
+model Waiter {
+  id        String   @id @default(cuid())
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tables    Table[]
+  
+  @@map("waiters")
+}
+
+// Mesas do estabelecimento
+model Table {
+  id          String      @id @default(cuid())
+  number      Int         @unique
+  location    String?     // Localização física (ex: "Área externa", "Salão principal")
+  capacity    Int         @default(4)
+  status      TableStatus @default(AVAILABLE)
+  waiterId    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  waiter      Waiter?     @relation(fields: [waiterId], references: [id])
+  tabs        Tab[]
+  
+  @@map("tables")
+}
+
+// Pessoas sentadas em uma mesa
+model Person {
+  id        String   @id @default(cuid())
+  name      String
+  tabId     String   @unique // Relacionamento 1:1 - cada pessoa tem sua própria comanda
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tab       Tab      @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  
+  @@map("persons")
+}
+
+// Comanda individual (uma por pessoa)
+model Tab {
+  id        String    @id @default(cuid())
+  tableId   String
+  total     Float     @default(0)
+  status    TabStatus @default(OPEN)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+  
+  table     Table     @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  person    Person?
+  orders    Order[]
+  
+  @@map("tabs")
+}
+
+// Pedidos feitos em uma comanda
+model Order {
+  id          String      @id @default(cuid())
+  tabId       String
+  menuItemId  String
+  quantity    Int         @default(1)
+  unitPrice   Float       // Preço unitário no momento do pedido
+  totalPrice  Float       // quantity * unitPrice
+  status      OrderStatus @default(PENDING)
+  notes       String?     // Observações do pedido (ex: "Sem cebola")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  tab         Tab         @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  menuItem    MenuItem    @relation(fields: [menuItemId], references: [id])
+  
+  @@map("orders")
+}
+
+// Itens do cardápio
+model MenuItem {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  category    MenuCategory
+  available   Boolean        @default(true)
+  imageUrl    String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  orders      Order[]
+  
+  @@map("menu_items")
+}
+
+// Enums
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
+
+enum TabStatus {
+  OPEN
+  CLOSED
+}
+
+enum OrderStatus {
+  PENDING     // Pedido registrado, aguardando preparo
+  PREPARING   // Em preparo na cozinha
+  READY       // Pronto para servir
+  DELIVERED   // Entregue ao cliente
+}
+
+enum MenuCategory {
+  APPETIZER
+  MAIN_COURSE
+  SIDE_DISH
+  DESSERT
+  BEVERAGE
+  ALCOHOLIC_BEVERAGE
+}

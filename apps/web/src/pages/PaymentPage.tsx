@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTab } from '../hooks/useTab';
 import { PaymentMethod, PAYMENT_METHOD_LABELS } from '@resbar/shared';
@@ -13,9 +13,22 @@ export function PaymentPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [paidAmount, setPaidAmount] = useState<string>('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const total = calculation?.total || 0;
   const change = paidAmount ? Math.max(0, parseFloat(paidAmount) - total) : 0;
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,17 +119,47 @@ export function PaymentPage() {
             <label className="block text-sm font-medium mb-2">
               Método de Pagamento
             </label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              className="w-full max-w-full border rounded px-3 py-2 text-sm sm:text-base"
-            >
-              {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            
+            {/* Dropdown Custom */}
+            <div ref={dropdownRef} className="relative w-full">
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full max-w-full border rounded px-3 py-2 text-sm sm:text-base bg-white text-left flex items-center justify-between"
+              >
+                <span className="truncate pr-2">
+                  {PAYMENT_METHOD_LABELS[paymentMethod]}
+                </span>
+                <svg 
+                  className={`w-4 h-4 transition-transform flex-shrink-0 ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                  {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setPaymentMethod(value as PaymentMethod);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm sm:text-base hover:bg-gray-100 truncate ${
+                        paymentMethod === value ? 'bg-blue-50 font-medium' : ''
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {paymentMethod === PaymentMethod.CASH && (

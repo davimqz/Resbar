@@ -1,0 +1,25 @@
+{
+  "name": "resbar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de gestão para bares e restaurantes",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
+    "dev:api": "pnpm --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "db:migrate": "pnpm --filter database migrate:dev",
+    "db:studio": "pnpm --filter database studio",
+    "build": "pnpm --filter api build && pnpm --filter web build",
+    "lint": "pnpm --recursive lint",
+    "type-check": "pnpm --recursive type-check"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

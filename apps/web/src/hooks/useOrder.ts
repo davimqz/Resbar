@@ -60,8 +60,11 @@ export const useOrder = () => {
       return response.data.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      // Delay para evitar rate limiting
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
+        queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      }, 100);
     },
   });
 

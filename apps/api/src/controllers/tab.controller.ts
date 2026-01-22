@@ -87,10 +87,10 @@ export class TabController {
       const { id } = req.params;
       const { paymentMethod, paidAmount } = req.body;
 
-      // Buscar a comanda com o total
+      // Buscar a comanda com o total e tableId
       const existingTab = await prisma.tab.findUnique({
         where: { id },
-        select: { total: true, status: true },
+        select: { total: true, status: true, tableId: true },
       });
 
       if (!existingTab) {
@@ -124,6 +124,25 @@ export class TabController {
           },
         },
       });
+
+      // Verificar se todas as comandas da mesa foram pagas
+      const openTabsCount = await prisma.tab.count({
+        where: {
+          tableId: existingTab.tableId,
+          status: 'OPEN',
+        },
+      });
+
+      // Se não há mais comandas abertas, atualizar status da mesa
+      if (openTabsCount === 0) {
+        await prisma.table.update({
+          where: { id: existingTab.tableId },
+          data: {
+            status: 'PAID_PENDING_RELEASE',
+            allTabsPaidAt: new Date(),
+          },
+        });
+      }
 
       res.json({
         success: true,

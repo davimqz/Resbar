@@ -10,6 +10,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Usuários do sistema (com autenticação)
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String
+  birthdate   DateTime?
+  gender      Gender?
+  customGender String?  // Usado quando gender = OTHER
+  role        UserRole  @default(STANDARD)
+  googleId    String?   @unique
+  avatar      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("users")
+}
+
 // Garçons do estabelecimento
 model Waiter {
   id        String   @id @default(cuid())
@@ -25,17 +42,19 @@ model Waiter {
 
 // Mesas do estabelecimento
 model Table {
-  id          String      @id @default(cuid())
-  number      Int         @unique
-  location    String?     // Localização física (ex: "Área externa", "Salão principal")
-  capacity    Int         @default(4)
-  status      TableStatus @default(AVAILABLE)
-  waiterId    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  number          Int         @unique
+  location        String?     // Localização física (ex: "Área externa", "Salão principal")
+  capacity        Int         @default(4)
+  status          TableStatus @default(AVAILABLE)
+  waiterId        String?
+  allTabsPaidAt   DateTime?   // Quando todas as comandas foram pagas
+  releasedAt      DateTime?   // Quando o garçom liberou a mesa
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
   
-  waiter      Waiter?     @relation(fields: [waiterId], references: [id])
-  tabs        Tab[]
+  waiter          Waiter?     @relation(fields: [waiterId], references: [id])
+  tabs            Tab[]
   
   @@map("tables")
 }
@@ -109,11 +128,39 @@ model MenuItem {
   @@map("menu_items")
 }
 
+// Itens de estoque (mockup para futura implementação)
+model InventoryItem {
+  id          String   @id @default(cuid())
+  name        String
+  quantity    Float    @default(0)
+  unit        String   // ex: "kg", "L", "unidades"
+  minStock    Float    @default(0)
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("inventory_items")
+}
+
 // Enums
 enum TableStatus {
   AVAILABLE
   OCCUPIED
   RESERVED
+  PAID_PENDING_RELEASE // Mesa paga mas aguardando liberação pelo garçom
+}
+
+enum UserRole {
+  STANDARD // Cliente padrão
+  WAITER   // Garçom
+  KITCHEN  // Cozinha
+  ADMIN    // Administrador
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }
 
 enum TabStatus {

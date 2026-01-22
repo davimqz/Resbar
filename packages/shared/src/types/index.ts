@@ -3,6 +3,7 @@ export enum TableStatus {
   AVAILABLE = 'AVAILABLE',
   OCCUPIED = 'OCCUPIED',
   RESERVED = 'RESERVED',
+  PAID_PENDING_RELEASE = 'PAID_PENDING_RELEASE',
 }
 
 export enum TabStatus {
@@ -33,6 +34,19 @@ export enum PaymentMethod {
   PIX = 'PIX',
 }
 
+export enum UserRole {
+  STANDARD = 'STANDARD',
+  WAITER = 'WAITER',
+  KITCHEN = 'KITCHEN',
+  ADMIN = 'ADMIN',
+}
+
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+  OTHER = 'OTHER',
+}
+
 // DTOs - Waiter
 export interface WaiterDTO {
   id: string;
@@ -61,6 +75,8 @@ export interface TableDTO {
   status: TableStatus;
   waiterId: string | null;
   waiter?: WaiterDTO;
+  allTabsPaidAt: Date | null;
+  releasedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -208,4 +224,111 @@ export interface TableCalculation {
 export interface CloseTabDTO {
   paymentMethod: PaymentMethod;
   paidAmount: number;
+}
+
+// DTOs - User
+export interface UserDTO {
+  id: string;
+  email: string;
+  name: string;
+  birthdate: Date | null;
+  gender: Gender | null;
+  customGender: string | null;
+  role: UserRole;
+  googleId: string | null;
+  avatar: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateUserDTO {
+  email: string;
+  name: string;
+  birthdate?: Date;
+  gender?: Gender;
+  customGender?: string;
+  role?: UserRole;
+  googleId?: string;
+  avatar?: string;
+}
+
+export interface UpdateUserDTO {
+  name?: string;
+  birthdate?: Date;
+  gender?: Gender;
+  customGender?: string;
+  role?: UserRole;
+  avatar?: string;
+}
+
+export interface CompleteProfileDTO {
+  name: string;
+  birthdate: Date;
+  gender: Gender;
+  customGender?: string;
+}
+
+// DTOs - Auth
+export interface LoginResponseDTO {
+  user: UserDTO;
+  accessToken: string;
+}
+
+export interface GoogleCallbackDTO {
+  googleId: string;
+  email: string;
+  name: string;
+  avatar?: string;
+}
+
+// DTOs - Inventory
+export interface InventoryItemDTO {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  minStock: number;
+  category: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateInventoryItemDTO {
+  name: string;
+  quantity?: number;
+  unit: string;
+  minStock?: number;
+  category?: string;
+}
+
+export interface UpdateInventoryItemDTO {
+  name?: string;
+  quantity?: number;
+  unit?: string;
+  minStock?: number;
+  category?: string;
+}
+
+// DTOs - Dashboard
+export interface DashboardStatsDTO {
+  dailyRevenue: number;
+  ordersCount: {
+    pending: number;
+    preparing: number;
+    ready: number;
+    delivered: number;
+  };
+  tablesOccupied: number;
+  popularItems: {
+    itemId: string;
+    itemName: string;
+    totalSold: number;
+    revenue: number;
+  }[];
+  waiterPerformance: {
+    waiterId: string;
+    waiterName: string;
+    tablesServed: number;
+    totalRevenue: number;
+  }[];
 }

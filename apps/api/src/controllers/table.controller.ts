@@ -192,4 +192,50 @@ export class TableController {
       next(error);
     }
   }
+
+  // Liberar mesa (garçom confirma que mesa está livre)
+  async releaseTable(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+
+      // Verifica se a mesa existe e está em estado PAID_PENDING_RELEASE
+      const table = await prisma.table.findUnique({
+        where: { id },
+        include: {
+          tabs: {
+            where: { status: 'OPEN' },
+          },
+        },
+      });
+
+      if (!table) {
+        throw new AppError(404, 'Mesa não encontrada');
+      }
+
+      if (table.tabs.length > 0) {
+        throw new AppError(400, 'Ainda existem comandas abertas nesta mesa');
+      }
+
+      // Libera a mesa e marca timestamp
+      const updatedTable = await prisma.table.update({
+        where: { id },
+        data: {
+          status: TableStatus.AVAILABLE,
+          releasedAt: new Date(),
+          allTabsPaidAt: null, // Reset para próximo uso
+        },
+        include: {
+          waiter: true,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: updatedTable,
+        message: 'Mesa liberada com sucesso',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

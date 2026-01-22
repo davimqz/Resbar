@@ -217,12 +217,14 @@ export default function TableDetailPage() {
                     >
                       Fechar Conta
                     </Link>
-                    <button
-                      onClick={() => deletePerson.mutate(tab.person.id)}
-                      className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                    >
-                      Remover
-                    </button>
+                    {tab.person && (
+                      <button
+                        onClick={() => deletePerson.mutate(tab.person.id)}
+                        className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                      >
+                        Remover
+                      </button>
+                    )}
                   </div>
                 </div>
 

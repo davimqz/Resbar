@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTable } from '../hooks/useTable';
-import { TableStatus, TABLE_STATUS_LABELS } from '@resbar/shared';
+import { useAuthStore } from '../store/authStore';
+import { TableStatus, TABLE_STATUS_LABELS, UserRole } from '@resbar/shared';
 
 export default function TablesPage() {
-  const { useTables, createTable } = useTable();
+  const { useTables, createTable, releaseTable } = useTable();
   const { data: tables, isLoading } = useTables();
+  const { user } = useAuthStore();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ number: '', location: '', capacity: '4' });
 
@@ -24,6 +26,22 @@ export default function TablesPage() {
     }
   };
 
+  const handleReleaseTable = async (tableId: string, tableNumber: number, e: React.MouseEvent) => {
+    e.preventDefault(); // Previne navegação do Link
+    e.stopPropagation();
+
+    if (!confirm(`Deseja liberar a Mesa ${tableNumber}?`)) {
+      return;
+    }
+
+    try {
+      await releaseTable.mutateAsync(tableId);
+      alert('Mesa liberada com sucesso!');
+    } catch (error: any) {
+      alert(error.message || 'Erro ao liberar mesa');
+    }
+  };
+
   const getStatusColor = (status: TableStatus) => {
     switch (status) {
       case TableStatus.AVAILABLE:
@@ -32,10 +50,14 @@ export default function TablesPage() {
         return 'bg-red-100 text-red-800 border-red-300';
       case TableStatus.RESERVED:
         return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case TableStatus.PAID_PENDING_RELEASE:
+        return 'bg-orange-100 text-orange-800 border-orange-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
+
+  const isWaiterOrAdmin = user?.role === UserRole.WAITER || user?.role === UserRole.ADMIN;
 
   if (isLoading) {
     return (
@@ -157,7 +179,40 @@ export default function TablesPage() {
                   <span className="font-medium">{table.tabs.length}</span>
                 </div>
               )}
+
+              {table.allTabsPaidAt && (
+                <div className="text-xs opacity-75 mt-2">
+                  Pago em: {new Date(table.allTabsPaidAt).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              )}
+
+              {table.releasedAt && (
+                <div className="text-xs opacity-75 mt-2">
+                  Liberado em: {new Date(table.releasedAt).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Botão de Liberar Mesa (apenas para garçons e quando mesa está paga) */}
+            {isWaiterOrAdmin && table.status === TableStatus.PAID_PENDING_RELEASE && (
+              <button
+                onClick={(e) => handleReleaseTable(table.id, table.number, e)}
+                disabled={releaseTable.isPending}
+                className="mt-4 w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300 text-sm font-medium"
+              >
+                {releaseTable.isPending ? 'Liberando...' : '✓ Liberar Mesa'}
+              </button>
+            )}
           </Link>
         ))}
       </div>

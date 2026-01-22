@@ -82,6 +82,16 @@ export const useTable = () => {
     },
   });
 
+  const releaseTable = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post<{ data: TableDTO }>(`/tables/${id}/release`);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+    },
+  });
+
   return {
     useTables,
     useTableById,
@@ -90,5 +100,6 @@ export const useTable = () => {
     updateTableStatus,
     assignWaiter,
     deleteTable,
+    releaseTable,
   };
 };

@@ -97,7 +97,8 @@ export default function KitchenPage() {
 
                 <button
                   onClick={() => handleStatusChange(order.id, getNextStatus(order.status)!)}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium"
+                  disabled={updateOrderStatus.isPending}
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium disabled:bg-blue-400 disabled:cursor-not-allowed"
                 >
                   Iniciar Preparo
                 </button>
@@ -143,7 +144,8 @@ export default function KitchenPage() {
 
                 <button
                   onClick={() => handleStatusChange(order.id, getNextStatus(order.status)!)}
-                  className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
+                  disabled={updateOrderStatus.isPending}
+                  className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium disabled:bg-green-400 disabled:cursor-not-allowed"
                 >
                   Marcar como Pronto
                 </button>
@@ -189,7 +191,8 @@ export default function KitchenPage() {
 
                 <button
                   onClick={() => handleStatusChange(order.id, getNextStatus(order.status)!)}
-                  className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 font-medium"
+                  disabled={updateOrderStatus.isPending}
+                  className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   Marcar como Entregue
                 </button>

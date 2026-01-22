@@ -11,7 +11,7 @@ services:
     name: resbar-api
     runtime: node
     plan: free
-    buildCommand: pnpm install && cd packages/database && pnpm prisma generate && cd ../../apps/api && pnpm build
+    buildCommand: pnpm install && cd packages/database && pnpm prisma generate && cd ../shared && pnpm build && cd ../../apps/api && pnpm build
     startCommand: cd apps/api && pnpm start
     healthCheckPath: /health
     envVars:

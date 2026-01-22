@@ -18,7 +18,7 @@ async function updateTabTotal(tabId: string) {
 }
 
 export class OrderController {
-  async getAll(req: Request, res: Response, next: NextFunction) {
+  async getAll(_req: Request, res: Response, next: NextFunction) {
     try {
       const orders = await prisma.order.findMany({
         include: {
@@ -227,7 +227,7 @@ export class OrderController {
     }
   }
 
-  async getKitchenOrders(req: Request, res: Response, next: NextFunction) {
+  async getKitchenOrders(_req: Request, res: Response, next: NextFunction) {
     try {
       const orders = await prisma.order.findMany({
         where: {

@@ -4,7 +4,7 @@ import { createWaiterSchema, updateWaiterSchema } from '@resbar/shared';
 import { AppError } from '../middleware/errorHandler.js';
 
 export class WaiterController {
-  async getAll(req: Request, res: Response, next: NextFunction) {
+  async getAll(_req: Request, res: Response, next: NextFunction) {
     try {
       const waiters = await prisma.waiter.findMany({
         orderBy: { name: 'asc' },

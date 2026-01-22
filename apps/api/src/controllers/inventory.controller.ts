@@ -4,7 +4,7 @@ import { AppError } from '../middleware/errorHandler.js';
 
 // Controller placeholder para inventário (mockup)
 export class InventoryController {
-  async getAll(req: Request, res: Response, next: NextFunction) {
+  async getAll(_req: Request, res: Response, next: NextFunction) {
     try {
       const items = await prisma.inventoryItem.findMany({
         orderBy: { name: 'asc' },

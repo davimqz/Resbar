@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import type { DashboardStatsDTO } from '@resbar/shared';
 
 export class DashboardController {
-  async getStats(req: Request, res: Response, next: NextFunction) {
+  async getStats(_req: Request, res: Response, next: NextFunction) {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);

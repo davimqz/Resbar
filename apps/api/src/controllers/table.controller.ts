@@ -4,7 +4,7 @@ import { createTableSchema, updateTableSchema, TableStatus } from '@resbar/share
 import { AppError } from '../middleware/errorHandler.js';
 
 export class TableController {
-  async getAll(req: Request, res: Response, next: NextFunction) {
+  async getAll(_req: Request, res: Response, next: NextFunction) {
     try {
       const tables = await prisma.table.findMany({
         include: {

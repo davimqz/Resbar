@@ -1,6 +1,6 @@
 {
-  "installCommand": "echo 'Skipping default install...'",
-  "buildCommand": "npm install -g pnpm && cd ../.. && pnpm install && cd packages/shared && pnpm build && cd ../../apps/web && pnpm build",
+  "installCommand": "echo 'Using custom build script'",
+  "buildCommand": "sh ../../build-web.sh",
   "outputDirectory": "dist",
   "rewrites": [
     {

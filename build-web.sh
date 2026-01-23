@@ -1,18 +1,19 @@
-#!/usr/bin/env bash
-# Build script for Vercel frontend deployment
+#!/usr/bin/env sh
+set -e
 
-echo "Installing pnpm..."
-npm install -g pnpm
+echo "==> Installing pnpm..."
+npm install -g pnpm@latest
 
-echo "Installing dependencies..."
-pnpm install
+echo "==> Installing root dependencies..."
+pnpm install --no-frozen-lockfile
 
-echo "Building shared package..."
+echo "==> Building shared package..."
 cd packages/shared
 pnpm build
+cd ../..
 
-echo "Building web app..."
-cd ../../apps/web
+echo "==> Building web app..."
+cd apps/web
 pnpm build
 
-echo "Build complete!"
+echo "==> Build complete!"

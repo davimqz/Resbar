@@ -1,7 +1,5 @@
 {
-  "buildCommand": "cd ../.. && corepack enable && corepack prepare pnpm@latest --activate && pnpm install && cd packages/shared && pnpm build && cd ../../apps/web && pnpm build",
-  "installCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install",
-  "framework": "vite",
+  "buildCommand": "cd ../.. && bash build-web.sh",
   "outputDirectory": "dist",
   "rewrites": [
     {

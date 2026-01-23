@@ -56,6 +56,7 @@ export const createMenuItemSchema = z.object({
   category: z.nativeEnum(MenuCategory),
   available: z.boolean().optional().default(true),
   imageUrl: z.string().url('URL inválida').optional(),
+  allergens: z.array(z.string()).optional(),
 });
 
 export const updateMenuItemSchema = z.object({
@@ -65,6 +66,7 @@ export const updateMenuItemSchema = z.object({
   category: z.nativeEnum(MenuCategory).optional(),
   available: z.boolean().optional(),
   imageUrl: z.string().url('URL inválida').optional(),
+  allergens: z.array(z.string()).optional(),
 });
 
 // Query schemas

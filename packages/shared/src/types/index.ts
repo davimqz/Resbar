@@ -11,6 +11,11 @@ export enum TabStatus {
   CLOSED = 'CLOSED',
 }
 
+export enum TabType {
+  TABLE = 'TABLE',
+  COUNTER = 'COUNTER',
+}
+
 export enum OrderStatus {
   PENDING = 'PENDING',
   PREPARING = 'PREPARING',
@@ -52,6 +57,10 @@ export interface WaiterDTO {
   id: string;
   name: string;
   active: boolean;
+  onBreak: boolean;
+  breakStartedAt: Date | null;
+  clockedInAt: Date | null;
+  clockedOutAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -113,12 +122,19 @@ export interface CreatePersonDTO {
 // DTOs - Tab
 export interface TabDTO {
   id: string;
-  tableId: string;
+  tableId: string | null;
+  type: TabType;
   total: number;
   status: TabStatus;
   paymentMethod: PaymentMethod | null;
   paidAmount: number | null;
   changeAmount: number | null;
+  serviceChargeIncluded: boolean;
+  serviceChargePaidSeparately: boolean;
+  serviceChargeAmount: number | null;
+  customerSeatedAt: Date | null;
+  requestedBillAt: Date | null;
+  paidAt: Date | null;
   person?: PersonDTO;
   createdAt: Date;
   updatedAt: Date;
@@ -139,6 +155,11 @@ export interface OrderDTO {
   totalPrice: number;
   status: OrderStatus;
   notes: string | null;
+  serviceChargeIncluded: boolean;
+  sentToKitchenAt: Date | null;
+  startedPreparingAt: Date | null;
+  readyAt: Date | null;
+  deliveredAt: Date | null;
   menuItem?: MenuItemDTO;
   createdAt: Date;
   updatedAt: Date;
@@ -162,10 +183,12 @@ export interface MenuItemDTO {
   id: string;
   name: string;
   description: string | null;
+  detailedDescription: string | null;
   price: number;
   category: MenuCategory;
   available: boolean;
   imageUrl: string | null;
+  allergens: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -173,19 +196,23 @@ export interface MenuItemDTO {
 export interface CreateMenuItemDTO {
   name: string;
   description?: string;
+  detailedDescription?: string;
   price: number;
   category: MenuCategory;
   available?: boolean;
   imageUrl?: string;
+  allergens?: string[];
 }
 
 export interface UpdateMenuItemDTO {
   name?: string;
   description?: string;
+  detailedDescription?: string;
   price?: number;
   category?: MenuCategory;
   available?: boolean;
   imageUrl?: string;
+  allergens?: string[];
 }
 
 // Response types
@@ -319,6 +346,7 @@ export interface DashboardStatsDTO {
     delivered: number;
   };
   tablesOccupied: number;
+  counterTabs: number; // Comandas de balcão
   popularItems: {
     itemId: string;
     itemName: string;
@@ -331,4 +359,30 @@ export interface DashboardStatsDTO {
     tablesServed: number;
     totalRevenue: number;
   }[];
+}
+
+// DTOs - TabWaiterHistory
+export interface TabWaiterHistoryDTO {
+  id: string;
+  tabId: string;
+  waiterId: string;
+  waiter?: WaiterDTO;
+  assignedAt: Date;
+  removedAt: Date | null;
+}
+
+// Additional DTOs for new features
+export interface ToggleServiceChargeDTO {
+  serviceChargeIncluded: boolean;
+  serviceChargePaidSeparately?: boolean;
+}
+
+export interface WaiterBreakDTO {
+  waiterId: string;
+  breakStartedAt: Date;
+  breakEndsAt: Date; // Calculated: breakStartedAt + 1 hour
+}
+
+export interface CreateCounterTabDTO {
+  personName: string;
 }

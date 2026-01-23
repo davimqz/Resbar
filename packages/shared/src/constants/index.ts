@@ -56,3 +56,31 @@ export const CUSTOM_GENDER_OPTIONS = [
   'Transgênero',
   'Prefiro não informar',
 ] as const;
+
+export const TAB_TYPE_LABELS = {
+  TABLE: 'Mesa',
+  COUNTER: 'Balcão',
+} as const;
+
+// Códigos e símbolos de alergias
+export const ALLERGEN_CODES = {
+  GLUTEN: { symbol: '🌾', name: 'Glúten' },
+  DAIRY: { symbol: '🥛', name: 'Laticínios' },
+  EGGS: { symbol: '🥚', name: 'Ovos' },
+  NUTS: { symbol: '🥜', name: 'Amendoim' },
+  TREE_NUTS: { symbol: '🌰', name: 'Castanhas' },
+  FISH: { symbol: '🐟', name: 'Peixes' },
+  SHELLFISH: { symbol: '🦐', name: 'Frutos do Mar' },
+  SOY: { symbol: '🫘', name: 'Soja' },
+  SESAME: { symbol: '🌾', name: 'Gergelim' },
+  SULFITES: { symbol: '🍷', name: 'Sulfitos' },
+  CELERY: { symbol: '🥬', name: 'Aipo' },
+  MUSTARD: { symbol: '🟡', name: 'Mostarda' },
+  LUPIN: { symbol: '🌸', name: 'Tremoço' },
+} as const;
+
+// Taxa de serviço padrão (10%)
+export const DEFAULT_SERVICE_CHARGE_RATE = 0.1;
+
+// Duração do intervalo do garçom (1 hora em milissegundos)
+export const WAITER_BREAK_DURATION_MS = 60 * 60 * 1000;

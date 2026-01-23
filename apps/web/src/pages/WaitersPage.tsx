@@ -1,12 +1,84 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWaiter } from '../hooks/useWaiter';
+import { WAITER_BREAK_DURATION_MS } from '@resbar/shared';
 
 export default function WaitersPage() {
-  const { useWaiters, createWaiter, updateWaiter, deleteWaiter } = useWaiter();
+  const { 
+    useWaiters, 
+    createWaiter, 
+    updateWaiter, 
+    deleteWaiter,
+    clockIn,
+    clockOut,
+    startBreak,
+    endBreak 
+  } = useWaiter();
   const { data: waiters, isLoading } = useWaiters();
   const [showForm, setShowForm] = useState(false);
   const [editingWaiter, setEditingWaiter] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', active: true });
+
+  // State for break timers
+  const [breakTimers, setBreakTimers] = useState<Record<string, number>>({});
+
+  // Update break timers every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newTimers: Record<string, number> = {};
+      waiters?.forEach((waiter) => {
+        if (waiter.onBreak && waiter.breakStartedAt) {
+          const breakStart = new Date(waiter.breakStartedAt).getTime();
+          const now = Date.now();
+          const elapsed = now - breakStart;
+          const remaining = Math.max(0, WAITER_BREAK_DURATION_MS - elapsed);
+          newTimers[waiter.id] = remaining;
+        }
+      });
+      setBreakTimers(newTimers);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [waiters]);
+
+  const formatBreakTime = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleClockIn = async (waiterId: string) => {
+    try {
+      await clockIn.mutateAsync(waiterId);
+    } catch (error: any) {
+      alert(error.message || 'Erro ao bater ponto');
+    }
+  };
+
+  const handleClockOut = async (waiterId: string) => {
+    if (window.confirm('Deseja realmente finalizar o turno?')) {
+      try {
+        await clockOut.mutateAsync(waiterId);
+      } catch (error: any) {
+        alert(error.message || 'Erro ao finalizar turno');
+      }
+    }
+  };
+
+  const handleStartBreak = async (waiterId: string) => {
+    try {
+      await startBreak.mutateAsync(waiterId);
+    } catch (error: any) {
+      alert(error.message || 'Erro ao iniciar intervalo');
+    }
+  };
+
+  const handleEndBreak = async (waiterId: string) => {
+    try {
+      await endBreak.mutateAsync(waiterId);
+    } catch (error: any) {
+      alert(error.message || 'Erro ao finalizar intervalo');
+    }
+  };
 
   const resetForm = () => {
     setFormData({ name: '', active: true });
@@ -129,6 +201,9 @@ export default function WaitersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Turno
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ações
                 </th>
@@ -141,29 +216,98 @@ export default function WaitersPage() {
                     <div className="text-sm font-medium text-gray-900">{waiter.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        waiter.active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {waiter.active ? 'Ativo' : 'Inativo'}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full w-fit ${
+                          waiter.active
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {waiter.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                      {waiter.onBreak && (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800 w-fit">
+                          Em Intervalo {breakTimers[waiter.id] ? `(${formatBreakTime(breakTimers[waiter.id])})` : ''}
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(waiter)}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(waiter.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Excluir
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-xs text-gray-600">
+                      {waiter.clockedInAt && !waiter.clockedOutAt ? (
+                        <>
+                          <p className="font-medium text-green-700">Em turno</p>
+                          <p>Desde: {new Date(waiter.clockedInAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </>
+                      ) : waiter.clockedOutAt ? (
+                        <>
+                          <p className="font-medium text-gray-500">Fora de turno</p>
+                          <p>Saída: {new Date(waiter.clockedOutAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </>
+                      ) : (
+                        <p className="text-gray-400">Não iniciou turno</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <div className="flex flex-col gap-2 items-end">
+                      {/* Clock In/Out buttons */}
+                      {!waiter.clockedInAt || waiter.clockedOutAt ? (
+                        <button
+                          onClick={() => handleClockIn(waiter.id)}
+                          disabled={clockIn.isPending}
+                          className="text-green-600 hover:text-green-900 font-medium disabled:opacity-50"
+                        >
+                          Iniciar Turno
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleClockOut(waiter.id)}
+                          disabled={clockOut.isPending}
+                          className="text-red-600 hover:text-red-900 font-medium disabled:opacity-50"
+                        >
+                          Finalizar Turno
+                        </button>
+                      )}
+
+                      {/* Break buttons */}
+                      {waiter.clockedInAt && !waiter.clockedOutAt && (
+                        waiter.onBreak ? (
+                          <button
+                            onClick={() => handleEndBreak(waiter.id)}
+                            disabled={endBreak.isPending}
+                            className="text-blue-600 hover:text-blue-900 font-medium disabled:opacity-50"
+                          >
+                            Finalizar Intervalo
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleStartBreak(waiter.id)}
+                            disabled={startBreak.isPending}
+                            className="text-orange-600 hover:text-orange-900 font-medium disabled:opacity-50"
+                          >
+                            Iniciar Intervalo
+                          </button>
+                        )
+                      )}
+
+                      {/* Edit/Delete buttons */}
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => handleEdit(waiter)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDelete(waiter.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ))}

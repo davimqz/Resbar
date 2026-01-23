@@ -29,13 +29,18 @@ model User {
 
 // Garçons do estabelecimento
 model Waiter {
-  id        String   @id @default(cuid())
-  name      String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  active         Boolean   @default(true)
+  onBreak        Boolean   @default(false)
+  breakStartedAt DateTime?
+  clockedInAt    DateTime?
+  clockedOutAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   
-  tables    Table[]
+  tables         Table[]
+  tabHistory     TabWaiterHistory[]
   
   @@map("waiters")
 }
@@ -74,56 +79,71 @@ model Person {
 
 // Comanda individual (uma por pessoa)
 model Tab {
-  id            String         @id @default(cuid())
-  tableId       String
-  total         Float          @default(0)
-  status        TabStatus      @default(OPEN)
-  paymentMethod PaymentMethod?
-  paidAmount    Float?         // Valor pago pelo cliente
-  changeAmount  Float?         // Troco (se pagamento em dinheiro)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  closedAt      DateTime?
+  id                        String         @id @default(cuid())
+  tableId                   String?        // Opcional para comandas de balcão
+  type                      TabType        @default(TABLE)
+  total                     Float          @default(0)
+  status                    TabStatus      @default(OPEN)
+  paymentMethod             PaymentMethod?
+  paidAmount                Float?         // Valor pago pelo cliente
+  changeAmount              Float?         // Troco (se pagamento em dinheiro)
+  serviceChargeIncluded     Boolean        @default(true)
+  serviceChargePaidSeparately Boolean      @default(false)
+  serviceChargeAmount       Float?
+  customerSeatedAt          DateTime?      // Horário que o cliente sentou
+  requestedBillAt           DateTime?      // Horário que pediu a conta
+  paidAt                    DateTime?      // Horário que pagou
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+  closedAt                  DateTime?
   
-  table         Table          @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  person        Person?
-  orders        Order[]
+  table                     Table?         @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  person                    Person?
+  orders                    Order[]
+  waiterHistory             TabWaiterHistory[]
   
   @@map("tabs")
 }
 
 // Pedidos feitos em uma comanda
 model Order {
-  id          String      @id @default(cuid())
-  tabId       String
-  menuItemId  String
-  quantity    Int         @default(1)
-  unitPrice   Float       // Preço unitário no momento do pedido
-  totalPrice  Float       // quantity * unitPrice
-  status      OrderStatus @default(PENDING)
-  notes       String?     // Observações do pedido (ex: "Sem cebola")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                   String      @id @default(cuid())
+  tabId                String
+  menuItemId           String
+  quantity             Int         @default(1)
+  unitPrice            Float       // Preço unitário no momento do pedido
+  totalPrice           Float       // quantity * unitPrice
+  status               OrderStatus @default(PENDING)
+  notes                String?     // Observações do pedido (ex: "Sem cebola")
+  serviceChargeIncluded Boolean    @default(true)
+  sentToKitchenAt      DateTime?   // Horário enviado para cozinha
+  startedPreparingAt   DateTime?   // Horário que começou preparo
+  readyAt              DateTime?   // Horário que ficou pronto
+  deliveredAt          DateTime?   // Horário que foi entregue
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
   
-  tab         Tab         @relation(fields: [tabId], references: [id], onDelete: Cascade)
-  menuItem    MenuItem    @relation(fields: [menuItemId], references: [id])
+  tab                  Tab         @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  menuItem             MenuItem    @relation(fields: [menuItemId], references: [id])
   
   @@map("orders")
 }
 
 // Itens do cardápio
 model MenuItem {
-  id          String         @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  category    MenuCategory
-  available   Boolean        @default(true)
-  imageUrl    String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id                  String         @id @default(cuid())
+  name                String
+  description         String?
+  detailedDescription String?        // Descrição mais completa do prato
+  price               Float
+  category            MenuCategory
+  available           Boolean        @default(true)
+  imageUrl            String?
+  allergens           String[]       // Array de códigos de alergias (ex: ['GLUTEN', 'DAIRY'])
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
   
-  orders      Order[]
+  orders              Order[]
   
   @@map("menu_items")
 }
@@ -140,6 +160,22 @@ model InventoryItem {
   updatedAt   DateTime @updatedAt
   
   @@map("inventory_items")
+}
+
+// Histórico de garçons atendendo uma comanda
+model TabWaiterHistory {
+  id         String    @id @default(cuid())
+  tabId      String
+  waiterId   String
+  assignedAt DateTime  @default(now())
+  removedAt  DateTime?
+  
+  tab        Tab       @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  waiter     Waiter    @relation(fields: [waiterId], references: [id])
+  
+  @@index([tabId])
+  @@index([waiterId])
+  @@map("tab_waiter_history")
 }
 
 // Enums
@@ -166,6 +202,11 @@ enum Gender {
 enum TabStatus {
   OPEN
   CLOSED
+}
+
+enum TabType {
+  TABLE   // Mesa
+  COUNTER // Balcão
 }
 
 enum OrderStatus {

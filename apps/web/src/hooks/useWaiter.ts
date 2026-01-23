@@ -44,10 +44,54 @@ export const useWaiter = () => {
     },
   });
 
+  const clockIn = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post<{ data: WaiterDTO }>(`/waiters/${id}/clock-in`);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waiters'] });
+    },
+  });
+
+  const clockOut = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post<{ data: WaiterDTO }>(`/waiters/${id}/clock-out`);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waiters'] });
+    },
+  });
+
+  const startBreak = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post<{ data: WaiterDTO }>(`/waiters/${id}/start-break`);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waiters'] });
+    },
+  });
+
+  const endBreak = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post<{ data: WaiterDTO }>(`/waiters/${id}/end-break`);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waiters'] });
+    },
+  });
+
   return {
     useWaiters,
     createWaiter,
     updateWaiter,
     deleteWaiter,
+    clockIn,
+    clockOut,
+    startBreak,
+    endBreak,
   };
 };

@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTable } from '../hooks/useTable';
 import { usePerson } from '../hooks/usePerson';
 import { useOrder } from '../hooks/useOrder';
+import { useAuthStore } from '../store/authStore';
+import { UserRole } from '@resbar/shared';
 import { useMenuItem } from '../hooks/useMenuItem';
 import { useWaiter } from '../hooks/useWaiter';
 import { useTab } from '../hooks/useTab';
@@ -13,10 +15,11 @@ export default function TableDetailPage() {
   const navigate = useNavigate();
   const { useTableById, assignWaiter, updateTableStatus } = useTable();
   const { createPerson, deletePerson } = usePerson();
-  const { createOrder } = useOrder();
+  const { createOrder, updateOrder, deleteOrder } = useOrder();
   const { useMenuItems } = useMenuItem();
   const { useWaiters } = useWaiter();
-  const { useTableCalculation } = useTab();
+  const { useTableCalculation, deleteTab } = useTab();
+  const { user } = useAuthStore();
 
   const { data: table, isLoading } = useTableById(id!);
   const { data: menuItems } = useMenuItems({ available: true });
@@ -30,6 +33,10 @@ export default function TableDetailPage() {
   const [selectedMenuItemId, setSelectedMenuItemId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [showEditOrder, setShowEditOrder] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState<number>(1);
+  const [editingNotes, setEditingNotes] = useState<string>('');
 
   const handleAddPerson = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +232,22 @@ export default function TableDetailPage() {
                         Remover
                       </button>
                     )}
+                    {user?.role === UserRole.ADMIN && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Excluir comanda? Esta ação é irreversível.')) return;
+                            try {
+                            await deleteTab.mutateAsync(tab.id);
+                            alert('Comanda excluída');
+                          } catch (err: any) {
+                            alert(err.message || 'Erro ao excluir comanda');
+                          }
+                        }}
+                        className="px-3 py-1 bg-red-700 text-white text-sm rounded hover:bg-red-800"
+                      >
+                        Excluir Comanda (ADM)
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -248,9 +271,40 @@ export default function TableDetailPage() {
                             <p className="font-semibold text-gray-900">{order.menuItem.name}</p>
                             <p className="text-sm text-gray-600 mt-1">Quantidade: {order.quantity}</p>
                           </div>
-                          <p className="text-lg font-bold text-gray-900 ml-4">
-                            R$ {order.totalPrice.toFixed(2)}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <p className="text-lg font-bold text-gray-900 ml-4">
+                              R$ {order.totalPrice.toFixed(2)}
+                            </p>
+                            {user?.role === UserRole.ADMIN && (
+                              <div className="flex flex-col">
+                                <button
+                                  onClick={() => {
+                                    setEditingOrderId(order.id);
+                                    setEditingQuantity(order.quantity);
+                                    setEditingNotes(order.notes || '');
+                                    setShowEditOrder(true);
+                                  }}
+                                  className="px-2 py-1 text-xs bg-yellow-400 text-black rounded hover:brightness-95"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm('Excluir pedido?')) return;
+                                    try {
+                                      await deleteOrder.mutateAsync(order.id);
+                                      alert('Pedido excluído');
+                                    } catch (err: any) {
+                                      alert(err.message || 'Erro ao excluir pedido');
+                                    }
+                                  }}
+                                  className="mt-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                >
+                                  Excluir
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -349,6 +403,54 @@ export default function TableDetailPage() {
                 >
                   Cancelar
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-bold mb-4">Editar Pedido</h2>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editingOrderId) return;
+                  try {
+                  await updateOrder.mutateAsync({ id: editingOrderId, data: { quantity: editingQuantity, notes: editingNotes || undefined } });
+                  setShowEditOrder(false);
+                  setEditingOrderId(null);
+                } catch (err: any) {
+                  alert(err.message || 'Erro ao atualizar pedido');
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-2">Quantidade</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editingQuantity}
+                  onChange={(e) => setEditingQuantity(parseInt(e.target.value || '1'))}
+                  className="w-full rounded-md border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Observações</label>
+                <textarea
+                  value={editingNotes}
+                  onChange={(e) => setEditingNotes(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-md border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 bg-yellow-400 text-black px-4 py-2 rounded">Salvar</button>
+                <button type="button" onClick={() => setShowEditOrder(false)} className="px-4 py-2 border rounded">Cancelar</button>
               </div>
             </form>
           </div>

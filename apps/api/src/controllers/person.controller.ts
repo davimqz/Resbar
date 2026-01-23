@@ -17,10 +17,13 @@ export class PersonController {
         throw new AppError(404, 'Mesa não encontrada');
       }
 
-      // Criar tab para a pessoa
+      // Criar tab para a pessoa com timestamp de quando cliente sentou
       const tab = await prisma.tab.create({
         data: {
           tableId: data.tableId,
+          customerSeatedAt: new Date(), // Set timestamp when customer is seated
+          serviceChargeIncluded: false,
+          serviceChargePaidSeparately: false,
         },
       });
 

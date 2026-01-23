@@ -111,6 +111,9 @@ export async function googleCallback(req: Request, res: Response) {
 export async function completeProfile(req: Request, res: Response) {
   try {
     const userId = (req as any).user?.id;
+    console.log('Complete profile - User ID:', userId);
+    console.log('Complete profile - Body:', req.body);
+    
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -127,6 +130,8 @@ export async function completeProfile(req: Request, res: Response) {
       });
     }
 
+    console.log('Updating user with data:', { name, birthdate, gender, customGender });
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
@@ -136,6 +141,8 @@ export async function completeProfile(req: Request, res: Response) {
         customGender: gender === 'OTHER' ? customGender : null,
       },
     });
+
+    console.log('User updated successfully:', user.id);
 
     res.json({
       success: true,

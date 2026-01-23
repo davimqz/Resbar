@@ -1,6 +1,22 @@
 import { useOrder } from '../hooks/useOrder';
 import { OrderStatus } from '@resbar/shared';
 
+// Helper para calcular tempo relativo
+const getRelativeTime = (date: string | null) => {
+  if (!date) return null;
+  const now = new Date().getTime();
+  const orderTime = new Date(date).getTime();
+  const diffMinutes = Math.floor((now - orderTime) / 60000);
+  
+  if (diffMinutes < 1) return 'Agora mesmo';
+  if (diffMinutes === 1) return 'Há 1 minuto';
+  if (diffMinutes < 60) return `Há ${diffMinutes} minutos`;
+  
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours === 1) return 'Há 1 hora';
+  return `Há ${diffHours} horas`;
+};
+
 export default function KitchenPage() {
   const { useKitchenOrders, updateOrderStatus } = useOrder();
   const { data: orders, isLoading } = useKitchenOrders();
@@ -76,12 +92,17 @@ export default function KitchenPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-bold text-lg">Mesa {order.tab.table.number}</p>
+                    <p className="font-bold text-lg">Mesa {order.tab.table?.number || 'Balcão'}</p>
                     <p className="text-sm opacity-75">{order.tab.person?.name}</p>
                   </div>
                   <div className="text-xs text-right">
                     <p>{new Date(order.createdAt).toLocaleTimeString('pt-BR')}</p>
-                    {order.tab.table.waiter && (
+                    {order.sentToKitchenAt && (
+                      <p className="mt-1 font-semibold text-orange-700">
+                        {getRelativeTime(order.sentToKitchenAt)}
+                      </p>
+                    )}
+                    {order.tab.table?.waiter && (
                       <p className="mt-1">{order.tab.table.waiter.name}</p>
                     )}
                   </div>
@@ -123,12 +144,17 @@ export default function KitchenPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-bold text-lg">Mesa {order.tab.table.number}</p>
+                    <p className="font-bold text-lg">Mesa {order.tab.table?.number || 'Balcão'}</p>
                     <p className="text-sm opacity-75">{order.tab.person?.name}</p>
                   </div>
                   <div className="text-xs text-right">
                     <p>{new Date(order.createdAt).toLocaleTimeString('pt-BR')}</p>
-                    {order.tab.table.waiter && (
+                    {order.startedPreparingAt && (
+                      <p className="mt-1 font-semibold text-blue-700">
+                        {getRelativeTime(order.startedPreparingAt)}
+                      </p>
+                    )}
+                    {order.tab.table?.waiter && (
                       <p className="mt-1">{order.tab.table.waiter.name}</p>
                     )}
                   </div>
@@ -170,12 +196,17 @@ export default function KitchenPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-bold text-lg">Mesa {order.tab.table.number}</p>
+                    <p className="font-bold text-lg">Mesa {order.tab.table?.number || 'Balcão'}</p>
                     <p className="text-sm opacity-75">{order.tab.person?.name}</p>
                   </div>
                   <div className="text-xs text-right">
                     <p>{new Date(order.createdAt).toLocaleTimeString('pt-BR')}</p>
-                    {order.tab.table.waiter && (
+                    {order.readyAt && (
+                      <p className="mt-1 font-semibold text-green-700">
+                        {getRelativeTime(order.readyAt)}
+                      </p>
+                    )}
+                    {order.tab.table?.waiter && (
                       <p className="mt-1 font-medium">{order.tab.table.waiter.name}</p>
                     )}
                   </div>

@@ -1,3 +1,4 @@
+
 import { Request, Response, NextFunction } from 'express';
 import { UserRole } from '@resbar/shared';
 import { AuthRequest } from './auth.js';

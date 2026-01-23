@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTable } from '../hooks/useTable';
+import { useTab } from '../hooks/useTab';
 import { useAuthStore } from '../store/authStore';
 import { TableStatus, TABLE_STATUS_LABELS, UserRole } from '@resbar/shared';
 
@@ -8,8 +9,14 @@ export default function TablesPage() {
   const { useTables, createTable, releaseTable } = useTable();
   const { data: tables, isLoading } = useTables();
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { useTabs } = useTab();
+  const { data: tabs } = useTabs();
+  const { createTab } = useTab();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ number: '', location: '', capacity: '4' });
+  const [showOpenCounterModal, setShowOpenCounterModal] = useState(false);
+  const [counterPersonName, setCounterPersonName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,8 +90,49 @@ export default function TablesPage() {
           >
             {showForm ? 'Cancelar' : 'Nova Mesa'}
           </button>
+          <button
+            onClick={() => setShowOpenCounterModal(true)}
+            className="ml-3 inline-flex items-center justify-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
+          >
+            Abrir Comanda (Balcão)
+          </button>
         </div>
       </div>
+
+        {showOpenCounterModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <h2 className="text-xl font-bold mb-4">Abrir Comanda (Balcão)</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    const tab = await createTab.mutateAsync({ type: 'COUNTER', personName: counterPersonName || undefined });
+                    setShowOpenCounterModal(false);
+                    setCounterPersonName('');
+                    navigate(`/tabs/${tab.id}/payment`);
+                  } catch (err: any) {
+                    alert(err.message || 'Erro ao abrir comanda de balcão');
+                  }
+                }}
+              >
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nome do cliente (opcional)</label>
+                  <input
+                    type="text"
+                    value={counterPersonName}
+                    onChange={(e) => setCounterPersonName(e.target.value)}
+                    className="w-full rounded-md border-gray-300 px-3 py-2"
+                  />
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowOpenCounterModal(false)} className="px-4 py-2 border rounded">Cancelar</button>
+                  <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">Abrir</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       {showForm && (
         <div className="mt-6 bg-white shadow-sm rounded-lg p-6">
@@ -215,6 +263,36 @@ export default function TablesPage() {
             )}
           </Link>
         ))}
+      </div>
+
+      {/* Seção separada para Comandas Abertas */}
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold mb-4">Comandas Abertas</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {tabs && tabs.length > 0 ? (
+            tabs.filter((t: any) => t.status === 'OPEN').map((tab: any) => (
+              <div key={tab.id} className="bg-white rounded-lg shadow p-4 border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">{tab.person?.name || 'Sem nome'}</div>
+                    <div className="text-sm text-gray-600">{tab.table ? `Mesa ${tab.table.number}` : 'Balcão'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold">R$ {(tab.total || 0).toFixed(2)}</div>
+                    <button
+                      onClick={() => navigate(`/tabs/${tab.id}/payment`)}
+                      className="mt-2 inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1 text-sm text-white"
+                    >
+                      Abrir
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500">Nenhuma comanda aberta</div>
+          )}
+        </div>
       </div>
 
       {tables?.length === 0 && (

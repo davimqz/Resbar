@@ -29,20 +29,36 @@ export const useTab = () => {
     });
   };
 
+  const useTabs = () => {
+    return useQuery({
+      queryKey: ['tabs:all'],
+      queryFn: async () => {
+        const { data } = await api.get<{ data: any[] }>('/tabs');
+        return data.data;
+      },
+    });
+  };
+
   const useCloseTab = () => {
     return useMutation({
       mutationFn: async ({ 
         tabId, 
         paymentMethod, 
-        paidAmount 
+        paidAmount,
+        serviceChargeIncluded,
+        serviceChargePaidSeparately
       }: { 
         tabId: string; 
         paymentMethod: CloseTabDTO['paymentMethod'];
         paidAmount: number;
+        serviceChargeIncluded?: boolean;
+        serviceChargePaidSeparately?: boolean;
       }) => {
         const { data } = await api.patch(`/tabs/${tabId}/close`, {
           paymentMethod,
           paidAmount,
+          serviceChargeIncluded,
+          serviceChargePaidSeparately,
         });
         return data;
       },
@@ -53,9 +69,59 @@ export const useTab = () => {
     });
   };
 
+  const toggleServiceCharge = useMutation({
+    mutationFn: async ({ tabId, serviceChargeIncluded }: { tabId: string; serviceChargeIncluded: boolean }) => {
+      const { data } = await api.patch(`/tabs/${tabId}/toggle-service-charge`, {
+        serviceChargeIncluded,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tabs'] });
+    },
+  });
+
+  const requestBill = useMutation({
+    mutationFn: async (tabId: string) => {
+      const { data } = await api.post(`/tabs/${tabId}/request-bill`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tabs'] });
+    },
+  });
+
+  const createTab = useMutation({
+    mutationFn: async (data: { tableId?: string | null; type?: string; personName?: string }) => {
+      const { data: resp } = await api.post<{ data: any }>('/tabs', data);
+      return resp.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+    },
+  });
+
+  const deleteTab = useMutation({
+    mutationFn: async (tabId: string) => {
+      await api.delete(`/tabs/${tabId}`);
+    },
+    onSuccess: () => {
+      // Invalidate both the summary list and any table-specific caches
+      queryClient.invalidateQueries({ queryKey: ['tabs:all'] });
+      queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+    },
+  });
+
   return {
     useTabCalculation,
     useTableCalculation,
     useCloseTab,
+    toggleServiceCharge,
+    requestBill,
+    useTabs,
+    createTab,
+    deleteTab,
   };
 };

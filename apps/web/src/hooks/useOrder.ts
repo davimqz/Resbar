@@ -36,10 +36,15 @@ export const useOrder = () => {
       const response = await api.post<{ data: OrderDTO }>('/orders', data);
       return response.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['tabs:all'] });
       queryClient.invalidateQueries({ queryKey: ['tables'] });
+      const tableId = (data as any)?.tab?.tableId || (data as any)?.tab?.table?.id;
+      if (tableId) {
+        queryClient.invalidateQueries({ queryKey: ['tables', tableId, 'calculate'] });
+      }
     },
   });
 
@@ -48,9 +53,18 @@ export const useOrder = () => {
       const response = await api.put<{ data: OrderDTO }>(`/orders/${id}`, data);
       return response.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['tabs:all'] });
+      // Ensure table-level calculations and lists are refreshed
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      // If the updated order includes tab info with a tableId, invalidate that specific calculation
+      const tableId = (data as any)?.tab?.tableId || (data as any)?.tab?.table?.id;
+      if (tableId) {
+        queryClient.invalidateQueries({ queryKey: ['tables', tableId, 'calculate'] });
+        queryClient.invalidateQueries({ queryKey: ['tables', tableId] });
+      }
     },
   });
 
@@ -75,6 +89,8 @@ export const useOrder = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['tabs:all'] });
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
     },
   });
 

@@ -8,6 +8,7 @@ import orderRoutes from './orders.js';
 import menuItemRoutes from './menu-items.js';
 import dashboardRoutes from './dashboard.js';
 import inventoryRoutes from './inventory.js';
+import uploadRoutes from './uploads.js';
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.use('/persons', personRoutes);
 router.use('/tabs', tabRoutes);
 router.use('/orders', orderRoutes);
 router.use('/menu-items', menuItemRoutes);
+router.use('/uploads', uploadRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/inventory', inventoryRoutes);
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMenuItem } from '../hooks/useMenuItem';
-import { MenuCategory, MENU_CATEGORY_LABELS } from '@resbar/shared';
+import { MenuCategory, MENU_CATEGORY_LABELS, ALLERGEN_CODES } from '@resbar/shared';
+import { api } from '../lib/api';
 
 export default function MenuPage() {
   const { useMenuItems, createMenuItem, updateMenuItem, toggleAvailability, deleteMenuItem } =
@@ -14,7 +15,10 @@ export default function MenuPage() {
     price: '',
     category: MenuCategory.MAIN_COURSE,
     available: true,
+    imageUrl: '',
+    allergens: [] as string[],
   });
+  const [uploading, setUploading] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -37,6 +41,8 @@ export default function MenuPage() {
         price: parseFloat(formData.price),
         category: formData.category,
         available: formData.available,
+        imageUrl: formData.imageUrl || undefined,
+        allergens: formData.allergens && formData.allergens.length ? formData.allergens : undefined,
       };
 
       if (editingItem) {
@@ -58,8 +64,35 @@ export default function MenuPage() {
       price: item.price.toString(),
       category: item.category,
       available: item.available,
+      imageUrl: item.imageUrl || '',
+      allergens: item.allergens || [],
     });
     setShowForm(true);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploading(true);
+      const fd = new FormData();
+      fd.append('file', file);
+      const resp = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const url = resp.data.data.url;
+      setFormData((s:any) => ({ ...s, imageUrl: url }));
+    } catch (err: any) {
+      alert(err.message || 'Erro ao enviar imagem');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const toggleAllergen = (code: string) => {
+    setFormData((s:any) => {
+      const allergens = new Set(s.allergens || []);
+      if (allergens.has(code)) allergens.delete(code); else allergens.add(code);
+      return { ...s, allergens: Array.from(allergens) };
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -169,6 +202,39 @@ export default function MenuPage() {
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
                 <label className="ml-2 block text-sm text-gray-900">Disponível</label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Imagem (upload)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="mt-1 block w-full text-sm text-gray-600"
+                />
+                {uploading && <p className="text-xs text-gray-500 mt-1">Enviando imagem...</p>}
+                {formData.imageUrl && (
+                  <img src={formData.imageUrl} alt="preview" className="mt-2 h-24 w-24 object-cover rounded" />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Alergias</label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {Object.entries(ALLERGEN_CODES).map(([code, meta]) => (
+                    <label key={code} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={formData.allergens.includes(code)}
+                        onChange={() => toggleAllergen(code)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <span className="text-gray-700">{meta.symbol} {meta.name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 

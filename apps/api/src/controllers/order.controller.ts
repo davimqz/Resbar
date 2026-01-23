@@ -89,6 +89,11 @@ export class OrderController {
         throw new AppError(400, 'Item do cardápio não está disponível');
       }
 
+      // Get the tab to check serviceChargeIncluded default
+      const tab = await prisma.tab.findUnique({
+        where: { id: data.tabId },
+      });
+
       // Criar o pedido
       const totalPrice = menuItem.price * data.quantity;
 
@@ -100,6 +105,8 @@ export class OrderController {
           unitPrice: menuItem.price,
           totalPrice,
           notes: data.notes,
+          serviceChargeIncluded: tab?.serviceChargeIncluded ?? true,
+          sentToKitchenAt: new Date(), // Set timestamp when order is sent to kitchen
         },
         include: {
           menuItem: true,
@@ -176,9 +183,24 @@ export class OrderController {
         throw new AppError(400, 'Status inválido');
       }
 
+      // Prepare timestamp updates based on status
+      const timestampUpdates: any = { status };
+      
+      switch (status) {
+        case 'PREPARING':
+          timestampUpdates.startedPreparingAt = new Date();
+          break;
+        case 'READY':
+          timestampUpdates.readyAt = new Date();
+          break;
+        case 'DELIVERED':
+          timestampUpdates.deliveredAt = new Date();
+          break;
+      }
+
       const order = await prisma.order.update({
         where: { id },
-        data: { status },
+        data: timestampUpdates,
         include: {
           menuItem: true,
           tab: {

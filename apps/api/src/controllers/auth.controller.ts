@@ -87,7 +87,8 @@ export async function googleCallback(req: Request, res: Response) {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      // In production (Vercel frontend, Render API) allow cross-site cookie
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 dias
     });
 
@@ -227,7 +228,11 @@ export async function refreshAccessToken(req: Request, res: Response) {
 export async function logout(_req: Request, res: Response) {
   try {
     // Remove o refresh token cookie
-    res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    });
 
     res.json({
       success: true,

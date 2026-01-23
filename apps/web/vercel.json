@@ -1,6 +1,6 @@
 {
-  "installCommand": "echo 'Using custom build script'",
-  "buildCommand": "sh ../../build-web.sh",
+  "installCommand": "npm install -g pnpm@latest",
+  "buildCommand": "cd ../.. && pnpm install --no-frozen-lockfile && cd packages/shared && pnpm build && cd ../../apps/web && pnpm build",
   "outputDirectory": "dist",
   "rewrites": [
     {

@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm install -g pnpm && pnpm install && cd packages/shared && pnpm build && cd ../../apps/web && pnpm build",
+  "outputDirectory": "apps/web/dist",
+  "installCommand": "echo 'Using custom build'",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

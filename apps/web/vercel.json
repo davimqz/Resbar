@@ -1,6 +1,5 @@
 {
-  "installCommand": "npm install -g pnpm@latest",
-  "buildCommand": "cd ../.. && pnpm install --no-frozen-lockfile && cd packages/shared && pnpm build && cd ../../apps/web && pnpm build",
+  "buildCommand": "npm install -g pnpm@latest && cd ../.. && pnpm install --no-frozen-lockfile && cd packages/shared && pnpm build && cd ../../apps/web && pnpm build",
   "outputDirectory": "dist",
   "rewrites": [
     {

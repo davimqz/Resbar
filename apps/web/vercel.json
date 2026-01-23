@@ -1,4 +1,5 @@
 {
+  "installCommand": "echo 'Skipping default install...'",
   "buildCommand": "cd ../.. && bash build-web.sh",
   "outputDirectory": "dist",
   "rewrites": [

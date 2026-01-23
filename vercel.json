@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install -g pnpm@9 && pnpm install && pnpm --filter @resbar/shared build && pnpm --filter web build",
+  "buildCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install && pnpm --filter @resbar/shared build && pnpm --filter web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "echo skip",
   "rewrites": [

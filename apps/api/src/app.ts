@@ -9,6 +9,9 @@ import routes from './routes/index.js';
 
 const app: Application = express();
 
+// Trust proxy for production environments (Render, Heroku, etc.)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors({

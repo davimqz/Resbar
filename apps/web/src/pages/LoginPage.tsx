@@ -237,7 +237,6 @@ export function LoginPage() {
                 theme="filled_blue"
                 size="large"
                 text="continue_with"
-                locale="pt-BR"
               />
             </div>
 

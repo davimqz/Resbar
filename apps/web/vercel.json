@@ -1,4 +1,8 @@
 {
+  "buildCommand": "cd ../.. && pnpm install && cd packages/shared && pnpm build && cd ../../apps/web && pnpm build",
+  "installCommand": "pnpm install",
+  "framework": "vite",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",

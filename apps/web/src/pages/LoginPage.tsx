@@ -233,7 +233,8 @@ export function LoginPage() {
                   console.error('Erro no login do Google');
                   alert('Erro ao fazer login com Google');
                 }}
-                useOneTap
+                // Disable One Tap in production to avoid FedCM / COOP cross-origin issues
+                useOneTap={!import.meta.env.PROD}
                 theme="filled_blue"
                 size="large"
                 text="continue_with"

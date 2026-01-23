@@ -103,20 +103,23 @@ export class PersonController {
         where: { id },
       });
 
-      // Verificar se ainda há pessoas na mesa
-      const remainingTabs = await prisma.tab.count({
-        where: {
-          tableId: person.tab.tableId,
-          status: 'OPEN',
-        },
-      });
-
-      // Se não houver mais pessoas, atualizar status da mesa
-      if (remainingTabs === 0) {
-        await prisma.table.update({
-          where: { id: person.tab.tableId },
-          data: { status: 'AVAILABLE' },
+      // Verificar se ainda há pessoas na mesa (se a tab estiver vinculada a uma mesa)
+      const linkedTableId = person.tab.tableId;
+      if (linkedTableId) {
+        const remainingTabs = await prisma.tab.count({
+          where: {
+            tableId: linkedTableId,
+            status: 'OPEN',
+          },
         });
+
+        // Se não houver mais pessoas, atualizar status da mesa
+        if (remainingTabs === 0) {
+          await prisma.table.update({
+            where: { id: linkedTableId },
+            data: { status: 'AVAILABLE' },
+          });
+        }
       }
 
       res.json({

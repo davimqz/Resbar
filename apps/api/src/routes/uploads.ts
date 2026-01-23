@@ -6,10 +6,10 @@ import { uploadImage } from '../controllers/upload.controller.js';
 const router = Router();
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (_req, _file, cb) => {
     cb(null, path.join(process.cwd(), 'public', 'uploads'));
   },
-  filename: (req, file, cb) => {
+  filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
     const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`;
     cb(null, name);

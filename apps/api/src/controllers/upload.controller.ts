@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import path from 'path';
 
 export async function uploadImage(req: Request, res: Response, next: NextFunction) {
   try {

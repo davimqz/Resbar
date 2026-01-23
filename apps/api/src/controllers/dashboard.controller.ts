@@ -103,7 +103,7 @@ export class DashboardController {
         },
       });
 
-      const tableIds = waiterStats.map(stat => stat.tableId);
+      const tableIds = waiterStats.map(stat => stat.tableId).filter(Boolean) as string[];
       const tables = await prisma.table.findMany({
         where: {
           id: {
@@ -141,10 +141,20 @@ export class DashboardController {
         totalRevenue: data.totalRevenue,
       }));
 
+      const counterTabs = await prisma.tab.count({
+        where: {
+          type: 'COUNTER',
+          createdAt: {
+            gte: today,
+          },
+        },
+      });
+
       const stats: DashboardStatsDTO = {
         dailyRevenue,
         ordersCount,
         tablesOccupied,
+        counterTabs,
         popularItems,
         waiterPerformance,
       };

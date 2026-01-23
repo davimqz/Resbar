@@ -98,9 +98,8 @@ export class TabController {
       });
 
       // Optionally create person linked to tab (for counter quick sale)
-      let person = null;
       if (personName) {
-        person = await prisma.person.create({
+        await prisma.person.create({
           data: {
             name: personName,
             tabId: tab.id,

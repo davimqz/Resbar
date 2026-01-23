@@ -27,6 +27,8 @@ export default function MenuPage() {
       price: '',
       category: MenuCategory.MAIN_COURSE,
       available: true,
+      imageUrl: '',
+      allergens: [] as string[],
     });
     setEditingItem(null);
     setShowForm(false);

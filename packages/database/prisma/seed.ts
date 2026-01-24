@@ -22,39 +22,23 @@ async function main() {
 
   console.log('✅ Garçons criados');
 
-  // Criar mesas
-  const tables = await Promise.all([
-    prisma.table.create({
-      data: {
-        number: 1,
-        location: 'Área externa',
-        capacity: 4,
-        waiterId: waiter1.id,
-      },
-    }),
-    prisma.table.create({
-      data: {
-        number: 2,
-        location: 'Salão principal',
-        capacity: 2,
-      },
-    }),
-    prisma.table.create({
-      data: {
-        number: 3,
-        location: 'Salão principal',
-        capacity: 6,
-        waiterId: waiter2.id,
-      },
-    }),
-    prisma.table.create({
-      data: {
-        number: 4,
-        location: 'Varanda',
-        capacity: 4,
-      },
-    }),
-  ]);
+  // Criar mesas (usar upsert para evitar falhas se já existirem)
+  const tables = [];
+  const tableData = [
+    { number: 1, location: 'Área externa', capacity: 4, waiterId: waiter1.id },
+    { number: 2, location: 'Salão principal', capacity: 2 },
+    { number: 3, location: 'Salão principal', capacity: 6, waiterId: waiter2.id },
+    { number: 4, location: 'Varanda', capacity: 4 },
+  ];
+
+  for (const t of tableData) {
+    const tb = await prisma.table.upsert({
+      where: { number: t.number },
+      update: {},
+      create: t,
+    });
+    tables.push(tb);
+  }
 
   console.log('✅ Mesas criadas');
 

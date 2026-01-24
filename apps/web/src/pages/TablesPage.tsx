@@ -122,7 +122,7 @@ export default function TablesPage() {
                     type="text"
                     value={counterPersonName}
                     onChange={(e) => setCounterPersonName(e.target.value)}
-                    className="w-full rounded-md border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
                   />
                 </div>
                 <div className="mt-4 flex justify-end gap-2">
@@ -271,7 +271,10 @@ export default function TablesPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tabs && tabs.length > 0 ? (
             tabs.filter((t: any) => t.status === 'OPEN').map((tab: any) => (
-              <div key={tab.id} className="bg-white rounded-lg shadow p-4 border">
+              <div
+                key={tab.id}
+                className={`bg-white rounded-lg shadow p-4 ${!tab.table ? 'border-2 border-black' : 'border border-gray-200'}`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold">{tab.person?.name || 'Sem nome'}</div>

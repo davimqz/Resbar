@@ -90,6 +90,8 @@ model Tab {
   serviceChargeIncluded     Boolean        @default(true)
   serviceChargePaidSeparately Boolean      @default(false)
   serviceChargeAmount       Float?
+  isUnifiedTab              Boolean        @default(false) // Marca se esta comanda recebeu transferências (comanda única)
+  unifiedTabPersonCount     Int?           // Quantas pessoas tiveram comandas ativas antes da unificação
   customerSeatedAt          DateTime?      // Horário que o cliente sentou
   requestedBillAt           DateTime?      // Horário que pediu a conta
   paidAt                    DateTime?      // Horário que pagou

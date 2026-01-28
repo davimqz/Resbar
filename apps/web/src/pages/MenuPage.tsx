@@ -81,7 +81,7 @@ export default function MenuPage() {
       fd.append('file', file);
       const resp = await api.post('/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       const url = resp.data.data.url;
-      setFormData((s:any) => ({ ...s, imageUrl: url }));
+      setFormData((s: any) => ({ ...s, imageUrl: url }));
     } catch (err: any) {
       alert(err.message || 'Erro ao enviar imagem');
     } finally {
@@ -90,7 +90,7 @@ export default function MenuPage() {
   };
 
   const toggleAllergen = (code: string) => {
-    setFormData((s:any) => {
+    setFormData((s: any) => {
       const allergens = new Set(s.allergens || []);
       if (allergens.has(code)) allergens.delete(code); else allergens.add(code);
       return { ...s, allergens: Array.from(allergens) };
@@ -270,44 +270,68 @@ export default function MenuPage() {
               {items.map((item: any) => (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-lg shadow-sm p-6 ${
-                    !item.available ? 'opacity-60' : ''
-                  }`}
+                  className={`bg-white rounded-lg shadow-sm overflow-hidden ${!item.available ? 'opacity-60' : ''
+                    }`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
-                    <span className="text-lg font-bold text-green-600">
-                      R$ {item.price.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {item.description && (
-                    <p className="text-sm text-gray-600 mb-4">{item.description}</p>
+                  {/* Imagem do prato */}
+                  {item.imageUrl && (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-48 object-cover"
+                    />
                   )}
 
-                  <div className="flex items-center gap-2 mt-4">
-                    <button
-                      onClick={() => toggleAvailability.mutate(item.id)}
-                      className={`flex-1 px-3 py-1 rounded text-sm font-medium ${
-                        item.available
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
+                      <span className="text-lg font-bold text-green-600">
+                        R$ {item.price.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {item.description && (
+                      <p className="text-sm text-gray-600 mb-4">{item.description}</p>
+                    )}
+
+                    {/* Alergênicos */}
+                    {item.allergens && item.allergens.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {item.allergens.map((code: string) => (
+                          <span
+                            key={code}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+                            title={(ALLERGEN_CODES as any)[code]?.name}
+                          >
+                            {(ALLERGEN_CODES as any)[code]?.symbol}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 mt-4">
+                      <button
+                        onClick={() => toggleAvailability.mutate(item.id)}
+                        className={`flex-1 px-3 py-1 rounded text-sm font-medium ${item.available
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {item.available ? 'Disponível' : 'Indisponível'}
-                    </button>
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium hover:bg-blue-200"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="px-3 py-1 bg-red-100 text-red-800 rounded text-sm font-medium hover:bg-red-200"
-                    >
-                      Excluir
-                    </button>
+                          }`}
+                      >
+                        {item.available ? 'Disponível' : 'Indisponível'}
+                      </button>
+                      <button
+                        onClick={() => handleEdit(item)}
+                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium hover:bg-blue-200"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="px-3 py-1 bg-red-100 text-red-800 rounded text-sm font-medium hover:bg-red-200"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

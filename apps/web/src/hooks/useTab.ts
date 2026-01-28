@@ -41,14 +41,14 @@ export const useTab = () => {
 
   const useCloseTab = () => {
     return useMutation({
-      mutationFn: async ({ 
-        tabId, 
-        paymentMethod, 
+      mutationFn: async ({
+        tabId,
+        paymentMethod,
         paidAmount,
         serviceChargeIncluded,
         serviceChargePaidSeparately
-      }: { 
-        tabId: string; 
+      }: {
+        tabId: string;
         paymentMethod: CloseTabDTO['paymentMethod'];
         paidAmount: number;
         serviceChargeIncluded?: boolean;
@@ -114,6 +114,17 @@ export const useTab = () => {
     },
   });
 
+  const transferAccount = useMutation({
+    mutationFn: async ({ fromTabId, toTabId }: { fromTabId: string; toTabId?: string }) => {
+      const { data } = await api.post(`/tabs/${fromTabId}/transfer`, { toTabId });
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+    },
+  });
+
   return {
     useTabCalculation,
     useTableCalculation,
@@ -123,5 +134,6 @@ export const useTab = () => {
     useTabs,
     createTab,
     deleteTab,
+    transferAccount,
   };
 };

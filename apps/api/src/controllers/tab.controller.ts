@@ -149,7 +149,7 @@ export class TabController {
       }
 
       // Calcular troco (se pagamento em dinheiro)
-      const changeAmount = paymentMethod === 'CASH' 
+      const changeAmount = paymentMethod === 'CASH'
         ? Math.max(0, paidAmount - finalTotal)
         : 0;
 
@@ -279,7 +279,7 @@ export class TabController {
         const subtotal = tab.orders.reduce((sum, order) => sum + order.totalPrice, 0);
         const serviceCharge = subtotal * DEFAULT_SERVICE_CHARGE_RATE;
         const total = subtotal + (tab.serviceChargeIncluded && !tab.serviceChargePaidSeparately ? serviceCharge : 0);
-        
+
         return {
           tabId: tab.id,
           personName: tab.person?.name || 'Sem nome',
@@ -292,7 +292,7 @@ export class TabController {
       });
 
       const grandTotal = tabCalculations.reduce((sum, calc) => sum + calc.total, 0);
-      const totalServiceCharge = tabCalculations.reduce((sum, calc) => 
+      const totalServiceCharge = tabCalculations.reduce((sum, calc) =>
         sum + (calc.serviceChargeIncluded ? calc.serviceCharge : 0), 0);
 
       const calculation = {
@@ -385,6 +385,111 @@ export class TabController {
       }
 
       res.json({ success: true, message: 'Comanda excluída com sucesso' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async transferAccount(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id: toTabId } = req.params; // Tab que vai receber todos os pedidos
+
+      // Buscar a tab de destino (que vai virar comanda única)
+      const destinationTab = await prisma.tab.findUnique({
+        where: { id: toTabId },
+        include: {
+          table: {
+            include: {
+              tabs: {
+                where: { status: 'OPEN' },
+                include: {
+                  orders: true,
+                  person: true,
+                },
+              },
+            },
+          },
+          person: true,
+        },
+      });
+
+      if (!destinationTab) {
+        throw new AppError(404, 'Comanda de destino não encontrada');
+      }
+
+      if (destinationTab.status === 'CLOSED') {
+        throw new AppError(400, 'Não é possível transferir para uma comanda fechada');
+      }
+
+      if (!destinationTab.tableId) {
+        throw new AppError(400, 'Comanda de destino deve estar associada a uma mesa');
+      }
+
+      // Buscar todas as tabs abertas da mesa
+      const allTableTabs = destinationTab.table!.tabs;
+
+      if (allTableTabs.length <= 1) {
+        throw new AppError(400, 'Não há outras comandas para transferir');
+      }
+
+      // Contar quantas pessoas têm comandas ativas (incluindo a de destino)
+      const personCount = allTableTabs.filter(tab => tab.person).length;
+
+      // Transferir todos os pedidos de TODAS as outras tabs para a tab de destino
+      const otherTabIds = allTableTabs
+        .filter(tab => tab.id !== toTabId)
+        .map(tab => tab.id);
+
+      if (otherTabIds.length > 0) {
+        await prisma.order.updateMany({
+          where: {
+            tabId: { in: otherTabIds },
+          },
+          data: { tabId: toTabId },
+        });
+
+        // Zerar o total das outras tabs (mas mantê-las no banco)
+        await prisma.tab.updateMany({
+          where: { id: { in: otherTabIds } },
+          data: { total: 0 },
+        });
+      }
+
+      // Recalcular total da tab de destino
+      const allOrders = await prisma.order.findMany({
+        where: { tabId: toTabId },
+      });
+
+      const newTotal = allOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+
+      // Atualizar tab de destino: marcar como unificada e salvar contagem de pessoas
+      await prisma.tab.update({
+        where: { id: toTabId },
+        data: {
+          total: newTotal,
+          isUnifiedTab: true,
+          unifiedTabPersonCount: personCount,
+        },
+      });
+
+      // Buscar tab de destino atualizada com todos os dados
+      const updatedDestinationTab = await prisma.tab.findUnique({
+        where: { id: toTabId },
+        include: {
+          person: true,
+          orders: {
+            include: {
+              menuItem: true,
+            },
+          },
+        },
+      });
+
+      res.json({
+        success: true,
+        message: `Todos os pedidos foram transferidos para a comanda de ${destinationTab.person?.name || 'Comanda Única'}. ${personCount} pessoas tiveram comandas ativas.`,
+        data: updatedDestinationTab,
+      });
     } catch (error) {
       next(error);
     }

@@ -18,7 +18,7 @@ export default function TableDetailPage() {
   const { createOrder, updateOrder, deleteOrder } = useOrder();
   const { useMenuItems } = useMenuItem();
   const { useWaiters } = useWaiter();
-  const { useTableCalculation, deleteTab } = useTab();
+  const { useTableCalculation, deleteTab, transferAccount } = useTab();
   const { user } = useAuthStore();
 
   const { data: table, isLoading } = useTableById(id!);
@@ -217,6 +217,9 @@ export default function TableDetailPage() {
                   <h3 className="text-2xl font-bold text-black mb-2">
                     {tab.person?.name || 'Sem nome'}
                   </h3>
+
+
+
                   <div className="flex gap-2">
                     <Link
                       to={`/tabs/${tab.id}/payment`}
@@ -224,6 +227,23 @@ export default function TableDetailPage() {
                     >
                       Fechar Conta
                     </Link>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(
+                          `Transferir todos os pedidos de "${tab.person?.name || 'Sem nome'}" para uma comanda única?\n\nEsta ação não pode ser desfeita.`
+                        )) return;
+
+                        try {
+                          await transferAccount.mutateAsync({ fromTabId: tab.id });
+                          alert('Conta transferida com sucesso!');
+                        } catch (err: any) {
+                          alert(err.message || 'Erro ao transferir conta');
+                        }
+                      }}
+                      className="px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
+                    >
+                      Transferir Conta
+                    </button>
                     {tab.person && (
                       <button
                         onClick={() => deletePerson.mutate(tab.person.id)}
@@ -236,7 +256,7 @@ export default function TableDetailPage() {
                       <button
                         onClick={async () => {
                           if (!confirm('Excluir comanda? Esta ação é irreversível.')) return;
-                            try {
+                          try {
                             await deleteTab.mutateAsync(tab.id);
                             alert('Comanda excluída');
                           } catch (err: any) {
@@ -417,7 +437,7 @@ export default function TableDetailPage() {
               onSubmit={async (e) => {
                 e.preventDefault();
                 if (!editingOrderId) return;
-                  try {
+                try {
                   await updateOrder.mutateAsync({ id: editingOrderId, data: { quantity: editingQuantity, notes: editingNotes || undefined } });
                   setShowEditOrder(false);
                   setEditingOrderId(null);

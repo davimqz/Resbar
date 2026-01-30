@@ -4,9 +4,10 @@
 echo "Installing dependencies..."
 pnpm install
 
-echo "Generating Prisma Client..."
+echo "Deploying Prisma migrations and generating Prisma Client..."
 cd packages/database
-pnpm prisma generate
+npx prisma migrate deploy --schema=prisma/schema.prisma
+npx prisma generate --schema=prisma/schema.prisma
 
 echo "Building shared package..."
 cd ../shared

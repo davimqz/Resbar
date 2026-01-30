@@ -1,18 +1,7 @@
 {
-  "installCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install",
-  "buildCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm --filter web build",
+  "installCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install --frozen-lockfile",
+  "buildCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm --filter @resbar/shared build && pnpm --filter web build",
   "outputDirectory": "apps/web/dist",
-  "rewrites": [
-    {
-      "source": "\\/(.*)",
-      "destination": "/index.html"
-    }
-  ]
-}
-{
-  "buildCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install && pnpm --filter @resbar/shared build && pnpm --filter web build",
-  "outputDirectory": "apps/web/dist",
-  "installCommand": "echo skip",
   "rewrites": [
     {
       "source": "/(.*)",

@@ -8,7 +8,7 @@ Configure no dashboard do Vercel (Settings → Environment Variables):
 
 ```
 VITE_API_URL=https://resbar-api.onrender.com
-VITE_GOOGLE_CLIENT_ID=950243078778-ugb8nttdu9nb4ar7cesv5cvc76d5tc47.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=1034610089308-o0kqbbbnk2omoivucge73rt0bjgi7h3s.apps.googleusercontent.com
 ```
 
 **Importante:**
@@ -25,7 +25,7 @@ PORT=3000
 DATABASE_URL=(gerado automaticamente pelo Render PostgreSQL)
 JWT_SECRET=(gerado automaticamente)
 SESSION_SECRET=(gerado automaticamente)
-GOOGLE_CLIENT_ID=950243078778-ugb8nttdu9nb4ar7cesv5cvc76d5tc47.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=1034610089308-o0kqbbbnk2omoivucge73rt0bjgi7h3s.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=(seu secret do Google Cloud Console)
 FRONTEND_URL=https://resbar-web.vercel.app
 ```

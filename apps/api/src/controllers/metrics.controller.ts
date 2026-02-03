@@ -9,6 +9,21 @@ import type {
   ApiResponse,
 } from '@resbar/shared';
 
+// Helper to convert BigInt to Number for JSON serialization
+function convertBigInt(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'bigint') return Number(obj);
+  if (Array.isArray(obj)) return obj.map(convertBigInt);
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const key in obj) {
+      result[key] = convertBigInt(obj[key]);
+    }
+    return result;
+  }
+  return obj;
+}
+
 function parseRange(req: Request) {
   const { start, end, groupBy } = req.query as Record<string, string>;
   const now = new Date();
@@ -42,7 +57,7 @@ export class MetricsController {
           AND "paidAt" <= ${end}
       `;
 
-      const revenue = (revenueResult as any[])[0]?.revenue ?? 0;
+      const revenue = Number((revenueResult as any[])[0]?.revenue ?? 0);
 
       // Open tabs
       const openTabs = await prisma.tab.count({ where: { status: 'OPEN' } });
@@ -81,7 +96,7 @@ export class MetricsController {
         end
       );
 
-      res.json({ success: true, data: rows as RevenueBucketDTO[] });
+      res.json({ success: true, data: convertBigInt(rows) as RevenueBucketDTO[] });
     } catch (error) {
       next(error);
     }
@@ -148,7 +163,7 @@ export class MetricsController {
         LIMIT 50
       `;
 
-      res.json({ success: true, data: rows as WaiterRankingDTO[] });
+      res.json({ success: true, data: convertBigInt(rows) as WaiterRankingDTO[] });
     } catch (error) {
       next(error);
     }
@@ -170,7 +185,7 @@ export class MetricsController {
         LIMIT ${limit}
       `;
 
-      res.json({ success: true, data: rows as TopMenuItemDTO[] });
+      res.json({ success: true, data: convertBigInt(rows) as TopMenuItemDTO[] });
     } catch (error) {
       next(error);
     }

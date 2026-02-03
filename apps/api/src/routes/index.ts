@@ -10,6 +10,7 @@ import dashboardRoutes from './dashboard.js';
 import inventoryRoutes from './inventory.js';
 import uploadRoutes from './uploads.js';
 import adminRoutes from './admin.js';
+import metricsRoutes from './metrics.js';
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.use('/menu-items', menuItemRoutes);
 router.use('/uploads', uploadRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/inventory', inventoryRoutes);
+router.use('/metrics', metricsRoutes);
 router.use('/admin', adminRoutes);
 
 export default router;

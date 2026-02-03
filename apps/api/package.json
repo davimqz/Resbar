@@ -7,6 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "jest --runInBand",
+    "gen:openapi-types": "npx openapi-typescript docs/openapi.yaml --output ../../packages/shared/src/openapi/metrics-api.ts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src"
   },
@@ -20,6 +22,7 @@
     "database": "workspace:*",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "swagger-ui-express": "^4.6.3",
     "express-rate-limit": "^7.1.5",
     "express-session": "^1.19.0",
     "helmet": "^7.1.0",

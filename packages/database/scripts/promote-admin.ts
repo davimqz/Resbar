@@ -3,7 +3,8 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function promoteToAdmin() {
-  const email = 'davimqz2003@gmail.com';
+  // Allow overriding the target email via env var PROMOTE_EMAIL
+  const email = process.env.PROMOTE_EMAIL || 'davimqz2003@gmail.com';
   
   try {
     const user = await prisma.user.update({

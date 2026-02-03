@@ -65,6 +65,7 @@ export const useTab = () => {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['tabs'] });
         queryClient.invalidateQueries({ queryKey: ['tables'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
       },
     });
   };
@@ -78,6 +79,7 @@ export const useTab = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     },
   });
 
@@ -88,6 +90,7 @@ export const useTab = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     },
   });
 
@@ -99,6 +102,7 @@ export const useTab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
       queryClient.invalidateQueries({ queryKey: ['tables'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     },
   });
 
@@ -111,6 +115,7 @@ export const useTab = () => {
       queryClient.invalidateQueries({ queryKey: ['tabs:all'] });
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
       queryClient.invalidateQueries({ queryKey: ['tables'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     },
   });
 
@@ -122,6 +127,7 @@ export const useTab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tabs'] });
       queryClient.invalidateQueries({ queryKey: ['tables'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     },
   });
 

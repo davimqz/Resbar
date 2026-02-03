@@ -1,0 +1,286 @@
+openapi: 3.0.3
+info:
+  title: Resbar Metrics API
+  version: 1.0.0
+  description: API spec for metrics endpoints (overview, revenue, kitchen, waiters, menu)
+servers:
+  - url: http://localhost:3333
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    MetricsOverview:
+      type: object
+      properties:
+        revenue:
+          type: number
+          format: float
+        openTabs:
+          type: integer
+        tablesOccupied:
+          type: integer
+        ticket:
+          type: number
+          format: float
+        activeCustomers:
+          type: integer
+      required: [revenue, openTabs, tablesOccupied, ticket, activeCustomers]
+
+    RevenueBucket:
+      type: object
+      properties:
+        bucket:
+          type: string
+          format: date-time
+        revenue:
+          type: number
+          format: float
+
+    KitchenDelayedOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        tabId:
+          type: string
+        menuItemId:
+          type: string
+        startedPreparingAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        secondsSinceStart:
+          type: number
+          format: float
+
+    KitchenPerformance:
+      type: object
+      properties:
+        avgPrepMinutes:
+          type: number
+          nullable: true
+        statusCounts:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+              count:
+                type: integer
+        delayed:
+          type: array
+          items:
+            $ref: '#/components/schemas/KitchenDelayedOrder'
+
+    WaiterRankingItem:
+      type: object
+      properties:
+        waiterId:
+          type: string
+        waiterName:
+          type: string
+        revenue:
+          type: number
+        tablesServed:
+          type: integer
+
+    TopMenuItem:
+      type: object
+      properties:
+        menuItemId:
+          type: string
+        name:
+          type: string
+        qty:
+          type: integer
+        revenue:
+          type: number
+
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          nullable: true
+          type: object
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: ok
+
+  /api/metrics/overview:
+    get:
+      summary: KPIs overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Metrics overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/MetricsOverview'
+
+  /api/metrics/revenue:
+    get:
+      summary: Revenue time series
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: groupBy
+          schema:
+            type: string
+            enum: [hour, day]
+      responses:
+        '200':
+          description: Series of revenue buckets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RevenueBucket'
+
+  /api/metrics/kitchen:
+    get:
+      summary: Kitchen performance and delayed orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: slaMinutes
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Kitchen metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/KitchenPerformance'
+
+  /api/metrics/waiters/ranking:
+    get:
+      summary: Waiters ranking
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Ranking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WaiterRankingItem'
+
+  /api/metrics/menu/top-items:
+    get:
+      summary: Top menu items
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Top items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopMenuItem'

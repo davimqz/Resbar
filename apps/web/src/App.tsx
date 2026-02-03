@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Layout from './components/Layout';
+import Layout from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import TablesPage from './pages/TablesPage';
 import TableDetailPage from './pages/TableDetailPage';
@@ -9,6 +9,12 @@ import WaitersPage from './pages/WaitersPage';
 import { PaymentPage } from './pages/PaymentPage';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
+import DashboardShell from './pages/DashboardShell';
+import DashboardFinance from './pages/DashboardFinance';
+import DashboardOperations from './pages/DashboardOperations';
+import DashboardKitchen from './pages/DashboardKitchen';
+import DashboardWaiters from './pages/DashboardWaiters';
+import DashboardMenu from './pages/DashboardMenu';
 import { InventoryPage } from './pages/InventoryPage';
 import { UserRole } from '@resbar/shared';
 
@@ -78,10 +84,17 @@ function App() {
             path="dashboard"
             element={
               <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
-                <DashboardPage />
+                <DashboardShell />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<DashboardPage />} />
+            <Route path="finance" element={<DashboardFinance />} />
+            <Route path="operations" element={<DashboardOperations />} />
+            <Route path="kitchen" element={<DashboardKitchen />} />
+            <Route path="waiters" element={<DashboardWaiters />} />
+            <Route path="menu" element={<DashboardMenu />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

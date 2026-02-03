@@ -45,7 +45,7 @@ model Waiter {
   @@map("waiters")
 }
 
-// Mesas do estabelecimento
+// Mesas do 
 model Table {
   id              String      @id @default(cuid())
   number          Int         @unique

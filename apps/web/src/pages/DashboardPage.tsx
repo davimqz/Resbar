@@ -34,61 +34,75 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">Visão Geral</h1>
+        <p className="text-gray-500 mt-1">Acompanhe as principais métricas do seu negócio</p>
+      </div>
 
-        {/* Cards de Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* Receita do Dia */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-500 text-sm font-medium">Receita do Dia</h3>
-              <span className="text-2xl">💰</span>
+      {/* Cards de Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Receita do Dia */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Receita do Dia</h3>
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <span className="text-xl">💰</span>
             </div>
-            <p className="text-3xl font-bold text-green-600">
-              R$ {stats.dailyRevenue.toFixed(2)}
-            </p>
           </div>
-
-          {/* Mesas Ocupadas */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-500 text-sm font-medium">Mesas Ocupadas</h3>
-              <span className="text-2xl">🪑</span>
-            </div>
-            <p className="text-3xl font-bold text-blue-600">
-              {stats.tablesOccupied}
-            </p>
-          </div>
-
-          {/* Total de Pedidos */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-500 text-sm font-medium">Pedidos Ativos</h3>
-              <span className="text-2xl">📋</span>
-            </div>
-            <p className="text-3xl font-bold text-purple-600">
-              {stats.ordersCount.pending + stats.ordersCount.preparing + stats.ordersCount.ready}
-            </p>
-          </div>
-
-          {/* Pedidos Entregues */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-500 text-sm font-medium">Pedidos Entregues</h3>
-              <span className="text-2xl">✅</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-700">
-              {stats.ordersCount.delivered}
-            </p>
-          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            R$ {stats.dailyRevenue.toFixed(2)}
+          </p>
+          <p className="text-sm text-green-600 mt-2">↑ Hoje</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Status dos Pedidos */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Status dos Pedidos</h2>
+        {/* Mesas Ocupadas */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Mesas Ocupadas</h3>
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <span className="text-xl">🪑</span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {stats.tablesOccupied}
+          </p>
+          <p className="text-sm text-blue-600 mt-2">Agora</p>
+        </div>
+
+        {/* Total de Pedidos */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Pedidos Ativos</h3>
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <span className="text-xl">📋</span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {stats.ordersCount.pending + stats.ordersCount.preparing + stats.ordersCount.ready}
+          </p>
+          <p className="text-sm text-purple-600 mt-2">Em andamento</p>
+        </div>
+
+        {/* Pedidos Entregues */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Pedidos Entregues</h3>
+            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+              <span className="text-xl">✅</span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {stats.ordersCount.delivered}
+          </p>
+          <p className="text-sm text-gray-600 mt-2">Hoje</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Status dos Pedidos */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Status dos Pedidos</h2>
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-yellow-50 rounded">
                 <span className="font-medium">{ORDER_STATUS_LABELS.PENDING}</span>
@@ -109,9 +123,9 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Itens Mais Vendidos */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Itens Mais Vendidos Hoje</h2>
+        {/* Itens Mais Vendidos */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Itens Mais Vendidos Hoje</h2>
             {stats.popularItems.length > 0 ? (
               <div className="space-y-3">
                 {stats.popularItems.map((item, index) => (
@@ -134,9 +148,9 @@ export function DashboardPage() {
             )}
           </div>
 
-          {/* Performance dos Garçons */}
-          <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-            <h2 className="text-xl font-bold mb-4">Performance dos Garçons Hoje</h2>
+        {/* Performance dos Garçons */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Performance dos Garçons Hoje</h2>
             {stats.waiterPerformance.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -164,7 +178,6 @@ export function DashboardPage() {
               <p className="text-gray-500 text-center py-8">Nenhum atendimento registrado hoje</p>
             )}
           </div>
-        </div>
       </div>
     </div>
   );

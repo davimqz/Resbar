@@ -361,6 +361,40 @@ export interface DashboardStatsDTO {
   }[];
 }
 
+// DTOs - Metrics
+export interface MetricsOverviewDTO {
+  revenue: number;
+  openTabs: number;
+  tablesOccupied: number;
+  ticket: number;
+  activeCustomers: number;
+}
+
+export interface RevenueBucketDTO {
+  bucket: string; // timestamp string
+  revenue: number;
+}
+
+export interface KitchenPerformanceDTO {
+  avgPrepMinutes: number | null;
+  statusCounts: { status: OrderStatus; count: number }[];
+  delayed: Array<{ id: string; tabId: string; menuItemId: string; startedPreparingAt: Date | null; status: OrderStatus; secondsSinceStart: number }>;
+}
+
+export interface WaiterRankingDTO {
+  waiterId: string;
+  waiterName: string;
+  revenue: number;
+  tablesServed: number;
+}
+
+export interface TopMenuItemDTO {
+  menuItemId: string;
+  name: string;
+  qty: number;
+  revenue: number;
+}
+
 // DTOs - TabWaiterHistory
 export interface TabWaiterHistoryDTO {
   id: string;

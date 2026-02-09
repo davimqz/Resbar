@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMenuItem } from '../hooks/useMenuItem';
+import formatCurrency from '../lib/formatCurrency';
 import { MenuCategory, MENU_CATEGORY_LABELS, ALLERGEN_CODES } from '@resbar/shared';
 import { api } from '../lib/api';
 
@@ -286,7 +287,7 @@ export default function MenuPage() {
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
                       <span className="text-lg font-bold text-green-600">
-                        R$ {item.price.toFixed(2)}
+                        {formatCurrency(item.price)}
                       </span>
                     </div>
 

@@ -1,5 +1,7 @@
 import { useDashboard } from '../hooks/useDashboard';
 import { ORDER_STATUS_LABELS } from '@resbar/shared';
+import { FaDollarSign, FaChair, FaClipboardList, FaCheckCircle } from 'react-icons/fa';
+import formatCurrency from '../lib/formatCurrency';
 
 export function DashboardPage() {
   const { useStats } = useDashboard();
@@ -42,16 +44,37 @@ export function DashboardPage() {
 
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Garçons Ativos */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Garçons Ativos</h3>
+            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <FaChair className="w-6 h-6 text-indigo-700" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{stats.activeWaiters?.length ?? 0}</p>
+          <p className="text-sm text-indigo-600 mt-2">Em turno</p>
+          {stats.activeWaiters && stats.activeWaiters.length > 0 && (
+            <ul className="mt-3 space-y-2 text-sm">
+              {stats.activeWaiters.map((w) => (
+                <li key={w.id} className="flex items-center justify-between">
+                  <span className="font-medium">{w.name}</span>
+                  <span className="text-xs text-gray-500">{w.onBreak ? 'Em intervalo' : 'Ativo'}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         {/* Receita do Dia */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-500 text-sm font-medium">Receita do Dia</h3>
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">💰</span>
+              <FaDollarSign className="w-6 h-6 text-green-700" />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
-            R$ {stats.dailyRevenue.toFixed(2)}
+            {formatCurrency(stats.dailyRevenue)}
           </p>
           <p className="text-sm text-green-600 mt-2">↑ Hoje</p>
         </div>
@@ -61,7 +84,7 @@ export function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-500 text-sm font-medium">Mesas Ocupadas</h3>
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">🪑</span>
+              <FaChair className="w-6 h-6 text-blue-700" />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
@@ -75,7 +98,7 @@ export function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-500 text-sm font-medium">Pedidos Ativos</h3>
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">📋</span>
+              <FaClipboardList className="w-6 h-6 text-purple-700" />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
@@ -89,7 +112,7 @@ export function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-500 text-sm font-medium">Pedidos Entregues</h3>
             <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">✅</span>
+              <FaCheckCircle className="w-6 h-6 text-gray-700" />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
@@ -138,7 +161,7 @@ export function DashboardPage() {
                       </div>
                     </div>
                     <span className="font-bold text-green-600">
-                      R$ {item.revenue.toFixed(2)}
+                      {formatCurrency(item.revenue)}
                     </span>
                   </div>
                 ))}
@@ -167,7 +190,7 @@ export function DashboardPage() {
                         <td className="py-3 px-4 font-medium">{waiter.waiterName}</td>
                         <td className="py-3 px-4 text-right">{waiter.tablesServed}</td>
                         <td className="py-3 px-4 text-right font-bold text-green-600">
-                          R$ {waiter.totalRevenue.toFixed(2)}
+                          {formatCurrency(waiter.totalRevenue)}
                         </td>
                       </tr>
                     ))}

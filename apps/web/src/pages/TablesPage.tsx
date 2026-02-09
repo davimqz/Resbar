@@ -298,7 +298,7 @@ export default function TablesPage() {
         </div>
       </div>
 
-      {tables?.length === 0 && (
+      {(!tables || tables.length === 0) && (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">Nenhuma mesa cadastrada</p>
           <button
@@ -309,6 +309,7 @@ export default function TablesPage() {
           </button>
         </div>
       )}
+
     </div>
   );
 }

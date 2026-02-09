@@ -359,6 +359,7 @@ export interface DashboardStatsDTO {
     tablesServed: number;
     totalRevenue: number;
   }[];
+  activeWaiters?: WaiterDTO[];
 }
 
 // DTOs - Metrics

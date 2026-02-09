@@ -176,18 +176,53 @@ export class TableController {
       const { id } = req.params;
       const { waiterId } = req.body;
 
+      // If removing waiter (null), allow and mark active waiter history as removed
+      if (waiterId == null) {
+        const table = await prisma.table.update({
+          where: { id },
+          data: { waiterId: null },
+          include: { waiter: true },
+        });
+
+        // Mark any active tab_waiter_history entries for open tabs as removed
+        const openTabs = await prisma.tab.findMany({ where: { tableId: id, status: 'OPEN' }, select: { id: true } });
+        const tabIds = openTabs.map(t => t.id);
+        if (tabIds.length > 0) {
+          await prisma.tabWaiterHistory.updateMany({ where: { tabId: { in: tabIds }, removedAt: null }, data: { removedAt: new Date() } });
+        }
+
+        return res.json({ success: true, data: table });
+      }
+
+      // Validate waiter exists and is currently clocked in
+      const waiter = await prisma.waiter.findUnique({ where: { id: waiterId } });
+
+      if (!waiter) {
+        throw new AppError(404, 'Garçom não encontrado');
+      }
+
+      if (!waiter.clockedInAt || waiter.clockedOutAt) {
+        throw new AppError(400, 'Garçom precisa estar em turno para ser atribuído à mesa');
+      }
+
+      // Assign waiter to table
       const table = await prisma.table.update({
         where: { id },
         data: { waiterId },
-        include: {
-          waiter: true,
-        },
+        include: { waiter: true },
       });
 
-      res.json({
-        success: true,
-        data: table,
-      });
+      // For all open tabs on this table, create a tab_waiter_history entry if none active
+      const openTabs = await prisma.tab.findMany({ where: { tableId: id, status: 'OPEN' }, select: { id: true } });
+
+      for (const t of openTabs) {
+        const existing = await prisma.tabWaiterHistory.findFirst({ where: { tabId: t.id, removedAt: null } });
+        if (!existing) {
+          await prisma.tabWaiterHistory.create({ data: { tabId: t.id, waiterId } });
+        }
+      }
+
+      return res.json({ success: true, data: table });
     } catch (error) {
       next(error);
     }

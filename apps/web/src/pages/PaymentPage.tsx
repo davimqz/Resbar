@@ -6,6 +6,7 @@ import { UserRole } from '@resbar/shared';
 import { useMenuItem } from '../hooks/useMenuItem';
 import { useOrder } from '../hooks/useOrder';
 import { PaymentMethod, PAYMENT_METHOD_LABELS, DEFAULT_SERVICE_CHARGE_RATE, MenuCategory, MENU_CATEGORY_LABELS } from '@resbar/shared';
+import formatCurrency from '../lib/formatCurrency';
 
 export function PaymentPage() {
   const { tabId } = useParams<{ tabId: string }>();
@@ -121,8 +122,8 @@ export function PaymentPage() {
                           Quantidade: {item.quantity}
                         </p>
                       </div>
-                      <span className="font-bold text-sm sm:text-base text-gray-900 whitespace-nowrap ml-2">
-                        R$ {item.totalPrice.toFixed(2)}
+                        <span className="font-bold text-sm sm:text-base text-gray-900 whitespace-nowrap ml-2">
+                        {formatCurrency(item.totalPrice)}
                       </span>
                       {user?.role === UserRole.ADMIN && (
                         <div className="flex flex-col items-end ml-2">
@@ -161,13 +162,13 @@ export function PaymentPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-700">Subtotal:</span>
-                      <span className="font-semibold text-gray-900">R$ {subtotal.toFixed(2)}</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(subtotal)}</span>
                     </div>
 
                     <div className="flex justify-between items-center pt-2 border-t">
                       <span className="text-lg sm:text-xl font-bold text-gray-900">Total:</span>
                       <span className="text-xl sm:text-2xl font-bold text-green-600">
-                        R$ {total.toFixed(2)}
+                        {formatCurrency(total)}
                       </span>
                     </div>
                   </div>
@@ -220,12 +221,12 @@ export function PaymentPage() {
                     className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
                   />
                   <label htmlFor="service-charge-checkbox" className="text-sm font-medium text-gray-900">
-                    Incluir taxa de serviço de 10% (R$ {serviceCharge.toFixed(2)})
+                    Incluir taxa de serviço de 10% ({formatCurrency(serviceCharge)})
                   </label>
                 </div>
-                {serviceChargeIncluded && (
+                    {serviceChargeIncluded && (
                   <p className="mt-2 text-xs text-gray-600">
-                    Total com taxa: R$ {total.toFixed(2)}
+                    Total com taxa: {formatCurrency(total)}
                   </p>
                 )}
               </div>
@@ -288,13 +289,13 @@ export function PaymentPage() {
                   min={total}
                   value={paidAmount}
                   onChange={(e) => setPaidAmount(e.target.value)}
-                  placeholder={`Mínimo: R$ ${total.toFixed(2)}`}
+                  placeholder={`Mínimo: ${formatCurrency(total)}`}
                   className="w-full border rounded px-3 py-2 text-sm sm:text-base"
                   required
                 />
-                {paidAmount && change > 0 && (
+                  {paidAmount && change > 0 && (
                   <p className="mt-2 text-green-600 font-semibold text-sm sm:text-base">
-                    Troco: R$ {change.toFixed(2)}
+                    Troco: {formatCurrency(change)}
                   </p>
                 )}
               </div>
@@ -302,7 +303,7 @@ export function PaymentPage() {
 
             {paymentMethod !== PaymentMethod.CASH && (
               <div className="p-3 bg-blue-50 rounded text-xs sm:text-sm">
-                <p className="font-medium">Valor a cobrar: R$ {total.toFixed(2)}</p>
+                <p className="font-medium">Valor a cobrar: {formatCurrency(total)}</p>
               </div>
             )}
 
@@ -364,8 +365,8 @@ export function PaymentPage() {
                           <optgroup key={category} label={MENU_CATEGORY_LABELS[category]}>
                             {items.map((item) => (
                               <option key={item.id} value={item.id}>
-                                {item.name} - R$ {item.price.toFixed(2)}
-                              </option>
+                                  {item.name} - {formatCurrency(item.price)}
+                                </option>
                             ))}
                           </optgroup>
                         );

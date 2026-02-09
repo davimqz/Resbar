@@ -4,6 +4,7 @@ import { useTable } from '../hooks/useTable';
 import { usePerson } from '../hooks/usePerson';
 import { useOrder } from '../hooks/useOrder';
 import { useAuthStore } from '../store/authStore';
+import formatCurrency from '../lib/formatCurrency';
 import { UserRole } from '@resbar/shared';
 import { useMenuItem } from '../hooks/useMenuItem';
 import { useWaiter } from '../hooks/useWaiter';
@@ -191,7 +192,7 @@ export default function TableDetailPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">Total da Mesa</h2>
             <div className="text-4xl font-bold text-green-700">
-              R$ {calculation.grandTotal.toFixed(2)}
+              {formatCurrency(calculation.grandTotal)}
             </div>
           </div>
         </div>
@@ -368,8 +369,8 @@ export default function TableDetailPage() {
                     return (
                       <optgroup key={category} label={MENU_CATEGORY_LABELS[category]}>
                         {items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name} - R$ {item.price.toFixed(2)}
+                            <option key={item.id} value={item.id}>
+                            {item.name} - {formatCurrency(item.price)}
                           </option>
                         ))}
                       </optgroup>

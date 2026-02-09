@@ -26,11 +26,39 @@ app.use(cors({
 app.use(cookieParser());
 
 // Rate limiting
+// Global limiter but skip the heavy dashboard finance route so we can
+// apply a per-route, higher limit for that endpoint.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // skip global limiter for finance summary path so a dedicated limiter can be used
+    // also skip auth routes (login/refresh/logout) to avoid blocking logout/refresh flows
+    const path = req.path ?? '';
+    if (path.startsWith('/api/dashboard/finance')) return true;
+    if (path.startsWith('/api/auth')) return true;
+    return false;
+  },
 });
-app.use('/api/', limiter);
+// Only enable the global rate limiter in non-development environments
+if (process.env.NODE_ENV !== 'development' && process.env.DISABLE_RATE_LIMITS !== 'true') {
+  app.use('/api/', limiter);
+} else {
+  // Helpful log for local development
+  // eslint-disable-next-line no-console
+  console.log('Rate limiter disabled for development (NODE_ENV=development or DISABLE_RATE_LIMITS=true)');
+}
+
+// More permissive limiter for finance dashboard (temporary increase)
+const financeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 300, // allow more requests for testing/dev
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/dashboard/finance', financeLimiter);
 
 // Body parsing middleware
 app.use(express.json());

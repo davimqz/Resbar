@@ -64,8 +64,12 @@ export function useLogout() {
     mutationFn: async () => {
       await api.post('/auth/logout');
     },
+    retry: 0,
     onSuccess: () => {
       clearAuth();
+    },
+    onError: (err: any) => {
+      console.error('Logout error', err?.response ?? err);
     },
   });
 }

@@ -1,0 +1,45 @@
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
+
+export function useOverview() {
+  function useOverviewData(opts?: { start?: string; end?: string }) {
+    return useQuery({
+      queryKey: ['metrics', 'overview', opts],
+      queryFn: async () => {
+        const params = new URLSearchParams();
+        if (opts?.start) params.set('start', opts.start);
+        if (opts?.end) params.set('end', opts.end);
+        // Prefer the consolidated dashboard overview endpoint which returns richer buckets
+        const url = params.toString() ? `/dashboard/overview?${params.toString()}` : '/dashboard/overview';
+        const { data } = await api.get(url);
+        return data.data;
+      },
+      retry: 0,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchInterval: false,
+    });
+  }
+
+  function useRevenue(opts?: { start?: string; end?: string; groupBy?: 'hour' | 'day' }) {
+    return useQuery({
+      queryKey: ['metrics', 'revenue', opts],
+      queryFn: async () => {
+        const params = new URLSearchParams();
+        if (opts?.start) params.set('start', opts.start);
+        if (opts?.end) params.set('end', opts.end);
+        params.set('groupBy', opts?.groupBy ?? 'day');
+        const url = `/metrics/revenue?${params.toString()}`;
+        const { data } = await api.get(url);
+        return data.data;
+      },
+      retry: 0,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    });
+  }
+
+  return { useOverviewData, useRevenue };
+}
+
+export default useOverview;

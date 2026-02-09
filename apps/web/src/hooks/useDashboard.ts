@@ -12,6 +12,10 @@ export function useDashboard() {
         );
         return response.data.data;
       },
+      retry: 0,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchInterval: false,
     });
   }
 

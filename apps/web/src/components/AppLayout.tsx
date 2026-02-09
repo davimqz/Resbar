@@ -18,9 +18,19 @@ export default function AppLayout() {
   };
 
   const handleLogout = async () => {
-    if (confirm('Deseja sair?')) {
+    if (!confirm('Deseja sair?')) return;
+
+    try {
       await logout.mutateAsync();
       navigate('/login');
+    } catch (err: any) {
+      console.error('Logout failed', err);
+      const status = err?.response?.status ?? err?.status;
+      if (status === 429) {
+        alert('Muitas requisições — tente novamente em alguns segundos.');
+      } else {
+        alert('Erro ao desconectar. Tente novamente.');
+      }
     }
   };
 
@@ -57,7 +67,7 @@ export default function AppLayout() {
           </svg>
         ),
         children: [
-          { path: '/dashboard', label: 'Visão geral' },
+          { path: '/dashboard/overview', label: 'Visão Geral' },
           { path: '/dashboard/finance', label: 'Financeiro' },
           { path: '/dashboard/operations', label: 'Operação' },
           { path: '/dashboard/kitchen', label: 'Cozinha' },

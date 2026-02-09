@@ -5,6 +5,7 @@
   "scripts": {
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
+    "reset": "prisma migrate reset --force && pnpm run seed",
     "studio": "prisma studio",
     "generate": "prisma generate",
     "seed": "tsx prisma/seed.ts"

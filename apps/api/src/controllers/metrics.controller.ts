@@ -7,7 +7,7 @@ import type {
   WaiterRankingDTO,
   TopMenuItemDTO,
   ApiResponse,
-} from '@resbar/shared';
+} from '../../../../packages/shared/src/types/index.js';
 
 // Helper to convert BigInt to Number for JSON serialization
 function convertBigInt(obj: any): any {

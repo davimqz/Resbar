@@ -8,5 +8,8 @@ const controller = new DashboardController();
 
 // Todas as rotas de dashboard requerem autenticação e role de admin
 router.get('/stats', authenticateToken, requireAdmin, controller.getStats);
+router.get('/overview', authenticateToken, requireAdmin, controller.getOverview.bind(controller));
+router.get('/finance/summary', authenticateToken, requireAdmin, controller.getFinanceSummary.bind(controller));
+router.get('/operational-metrics', authenticateToken, requireAdmin, controller.getOperationalMetrics.bind(controller));
 
 export default router;

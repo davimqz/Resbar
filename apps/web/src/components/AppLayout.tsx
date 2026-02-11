@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useLogout } from '../hooks/useAuth';
 import { UserRole } from '@resbar/shared';
+import logo from '../assets/logo-resbar.png';
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -116,7 +117,8 @@ export default function AppLayout() {
       {/* Sidebar Desktop */}
       <aside className="hidden sm:flex sm:flex-col sm:w-60 bg-white border-r border-slate-200">
         {/* Logo */}
-        <div className="p-5 border-b border-slate-200">
+        <div className="p-5 border-b border-slate-200 flex items-center gap-3">
+          <img src={logo} alt="Resbar" className="h-8 w-auto" />
           <h1 className="text-xl font-bold text-slate-900">Resbar</h1>
         </div>
 
@@ -213,7 +215,10 @@ export default function AppLayout() {
           <div className="relative bg-white w-64 h-full shadow-xl flex flex-col">
             {/* Mobile Header */}
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+              <div className="flex items-center gap-3">
+                <img src={logo} alt="Resbar" className="h-6 w-auto" />
+                <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+              </div>
               <button onClick={() => setMobileOpen(false)} className="p-2 rounded-lg text-slate-600 hover:bg-slate-100">
                 <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -315,7 +320,10 @@ export default function AppLayout() {
       <main className="flex-1 overflow-y-auto bg-slate-50">
         {/* Mobile Top Bar */}
         <div className="sm:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="Resbar" className="h-6 w-auto" />
+            <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+          </div>
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"

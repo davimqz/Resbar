@@ -19,7 +19,6 @@ const refreshClient = axios.create({
 });
 
 let isRefreshing = false;
-let refreshPromise: Promise<string | null> | null = null;
 let refreshSubscribers: Array<(token: string | null) => void> = [];
 
 function subscribeTokenRefresh(cb: (token: string | null) => void) {
@@ -58,7 +57,7 @@ api.interceptors.response.use(
 
       if (!isRefreshing) {
         isRefreshing = true;
-        refreshPromise = refreshClient
+        refreshClient
           .post('/auth/refresh')
           .then((res) => {
             const accessToken = res.data?.data?.accessToken;
@@ -70,13 +69,12 @@ api.interceptors.response.use(
             onRefreshed(null);
             return null;
           })
-          .catch((err) => {
+          .catch(() => {
             onRefreshed(null);
             return null;
           })
           .finally(() => {
             isRefreshing = false;
-            refreshPromise = null;
           });
       }
 

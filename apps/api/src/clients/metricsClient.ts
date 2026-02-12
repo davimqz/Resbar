@@ -1,5 +1,4 @@
-import type { ApiResponse } from '@resbar/shared';
-import type { components } from '../../../../packages/shared/src/openapi/metrics-api.js';
+import type { ApiResponse, components } from '@resbar/shared';
 
 type MetricsOverview = components['schemas']['MetricsOverview'];
 type RevenueBucket = components['schemas']['RevenueBucket'];

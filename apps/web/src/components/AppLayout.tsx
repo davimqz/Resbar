@@ -129,7 +129,7 @@ export default function AppLayout() {
               <div key={link.path} className="space-y-1">
                 <button
                   onClick={() => setDashboardExpanded(!dashboardExpanded)}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm font-medium text-resbar-charcoal hover:bg-resbar-cream rounded-lg transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     {link.icon}
@@ -151,11 +151,10 @@ export default function AppLayout() {
                         key={child.path}
                         to={child.path}
                         className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
-                          isActive(child.path)
-                            ? 'bg-slate-100 text-slate-900 font-medium'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                        }`}
-                      >
+                            isActive(child.path)
+                              ? 'bg-resbar-cream text-resbar-softblack font-medium'
+                              : 'text-resbar-charcoal hover:bg-resbar-cream hover:text-resbar-softblack'
+                            }`}>
                         {child.label}
                       </Link>
                     ))}
@@ -167,11 +166,10 @@ export default function AppLayout() {
                 key={link.path}
                 to={link.path}
                 className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  isActive(link.path)
-                    ? 'bg-slate-100 text-slate-900'
-                    : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
+                    isActive(link.path)
+                      ? 'bg-resbar-cream text-resbar-softblack'
+                      : 'text-resbar-charcoal hover:bg-resbar-cream'
+                    }`}>
                 {link.icon}
                 <span>{link.label}</span>
               </Link>
@@ -181,18 +179,18 @@ export default function AppLayout() {
 
         {/* User Profile - Bottom */}
         {isAuthenticated && user && (
-          <div className="p-4 border-t border-slate-200">
+            <div className="p-4 border-t border-resbar-taupe">
             <div className="flex items-center gap-3 mb-3">
               {user.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-9 h-9 rounded-full" />
               ) : (
-                <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center">
-                  <span className="text-sm font-medium text-slate-600">{user.name.charAt(0)}</span>
+                <div className="w-9 h-9 rounded-full bg-resbar-cream flex items-center justify-center">
+                  <span className="text-sm font-medium text-resbar-charcoal">{user.name.charAt(0)}</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">{user.name}</div>
-                <div className="text-xs text-slate-500">{user.role}</div>
+                <div className="text-sm font-medium text-resbar-softblack truncate">{user.name}</div>
+                <div className="text-xs text-resbar-charcoal">{user.role}</div>
               </div>
             </div>
             <button

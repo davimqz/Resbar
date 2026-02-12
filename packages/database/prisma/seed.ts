@@ -83,30 +83,20 @@ async function main() {
         allergens: ['DAIRY'],
       },
     }),
-    prisma.menuItem.create({
-      data: {
-        name: 'Risoto de Cogumelos',
-        description: 'Risoto cremoso com mix de cogumelos frescos',
-        detailedDescription: 'Arroz arbóreo preparado lentamente com caldo de legumes, mix de cogumelos frescos (shiitake, paris e shimeji), finalizado com parmesão e manteiga',
-        price: 38.5,
-        category: 'MAIN_COURSE',
-        available: true,
-        imageUrl: 'https://images.unsplash.com/photo-1476124369491-b79f25d6ff50',
-        allergens: ['DAIRY'],
-      },
-    }),
-    prisma.menuItem.create({
-      data: {
-        name: 'Salmão Grelhado',
-        description: 'Salmão grelhado com legumes e molho de ervas',
-        detailedDescription: 'Filé de salmão fresco grelhado no ponto, acompanhado de legumes salteados na manteiga e molho de ervas finas',
-        price: 48.9,
-        category: 'MAIN_COURSE',
-        available: true,
-        imageUrl: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927',
-        allergens: ['FISH', 'DAIRY'],
-      },
-    }),
+        // Risoto de Cogumelos and Cheesecake mappings removed
+      }),
+      prisma.menuItem.create({
+        data: {
+          name: 'Salmão Grelhado',
+          description: 'Salmão grelhado com legumes e molho de ervas',
+          detailedDescription: 'Filé de salmão fresco grelhado no ponto, acompanhado de legumes salteados na manteiga e molho de ervas finas',
+          price: 48.9,
+          category: 'MAIN_COURSE',
+          available: true,
+          imageUrl: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927',
+          allergens: ['FISH', 'DAIRY'],
+        },
+      }),
 
     // Acompanhamentos
     prisma.menuItem.create({
@@ -129,6 +119,7 @@ async function main() {
         price: 12.0,
         category: 'SIDE_DISH',
         available: true,
+        imageUrl: 'https://images.unsplash.com/photo-1516684732162-798a0062be99',
         allergens: [],
       },
     }),
@@ -146,18 +137,7 @@ async function main() {
         allergens: ['GLUTEN', 'DAIRY', 'EGGS'],
       },
     }),
-    prisma.menuItem.create({
-      data: {
-        name: 'Cheesecake',
-        description: 'Torta de cream cheese com calda de frutas vermelhas',
-        detailedDescription: 'Torta cremosa de cream cheese sobre base de biscoito, finalizada com calda de frutas vermelhas',
-        price: 18.5,
-        category: 'DESSERT',
-        available: true,
-        imageUrl: 'https://images.unsplash.com/photo-1533134242820-ded77abc91fb',
-        allergens: ['GLUTEN', 'DAIRY', 'EGGS'],
-      },
-    }),
+      // Cheesecake mapping removed
 
     // Bebidas
     prisma.menuItem.create({
@@ -168,6 +148,7 @@ async function main() {
         price: 8.0,
         category: 'BEVERAGE',
         available: true,
+        imageUrl: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba',
         allergens: [],
       },
     }),
@@ -178,6 +159,7 @@ async function main() {
         price: 6.0,
         category: 'BEVERAGE',
         available: true,
+        imageUrl: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e',
         allergens: [],
       },
     }),
@@ -188,6 +170,7 @@ async function main() {
         price: 4.5,
         category: 'BEVERAGE',
         available: true,
+        imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d',
         allergens: [],
       },
     }),
@@ -213,6 +196,7 @@ async function main() {
         price: 16.0,
         category: 'ALCOHOLIC_BEVERAGE',
         available: true,
+        imageUrl: 'https://images.unsplash.com/photo-1551538827-9c037cb4f32a',
         allergens: [],
       },
     }),
@@ -224,6 +208,7 @@ async function main() {
         price: 18.0,
         category: 'ALCOHOLIC_BEVERAGE',
         available: true,
+        imageUrl: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3',
         allergens: ['SULFITES'],
       },
     }),
@@ -270,15 +255,35 @@ async function main() {
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
+  // Lists of real names to use in seed (replace or extend as needed)
+  const waiterNames = [
+    'João Silva',
+    'Maria Santos',
+    'Carlos Pereira',
+    'Ana Oliveira',
+    'Marcos Almeida',
+    'Beatriz Costa',
+    'Rafael Gomes',
+    'Fernanda Ribeiro'
+  ];
+
+  const personNames = [
+    'Lucas Oliveira', 'Mariana Souza', 'Pedro Almeida', 'Gabriela Costa', 'Bruno Pereira',
+    'Aline Rodrigues', 'Ricardo Martins', 'Camila Fernandes', 'Diego Barros', 'Paula Nunes',
+    'Thiago Rocha', 'Juliana Lima', 'Eduardo Carvalho', 'Sofia Mendes', 'Gustavo Araújo',
+    'Marcos Silva', 'Isabela Castro', 'Henrique Moreira', 'Letícia Barbosa', 'Vitor Menezes'
+  ];
+
   // Carregar menu items criados
   const items = menuItems.map((m: any) => m);
 
   // Criar mais garçons se necessário
   const extraWaiters = [];
   for (let i = 0; i < 5; i++) {
+    const name = waiterNames[(i + 2) % waiterNames.length];
     const w = await prisma.waiter.create({
       data: {
-        name: `Garcom Seed ${i + 1}`,
+        name,
         active: true,
         onBreak: false,
       },
@@ -288,10 +293,26 @@ async function main() {
 
   const allWaiters = [waiter1, waiter2, ...extraWaiters];
 
-  // Criar lista de clientes (persons) e comandas históricas por dia
+  // Range de dias e data atual (usado para gerar horários)
   const startDaysAgo = 21; // criar 21 dias de dados
   const today = new Date();
 
+  // Enriquecer dados dos garçons: clockedIn/Out e pausas aleatórias
+  for (const w of allWaiters) {
+    const clockedInAt = new Date(today.getTime() - randInt(0, 6) * 24 * 60 * 60 * 1000 - randInt(0, 6) * 60 * 60 * 1000);
+    const onBreak = Math.random() < 0.2;
+    const breakStartedAt = onBreak ? new Date(clockedInAt.getTime() + randInt(2, 5) * 60 * 60 * 1000) : null;
+    const clockedOutAt = Math.random() < 0.4 ? new Date(clockedInAt.getTime() + randInt(6, 10) * 60 * 60 * 1000) : null;
+
+    await prisma.waiter.update({ where: { id: w.id }, data: {
+      clockedInAt,
+      clockedOutAt,
+      onBreak,
+      breakStartedAt: breakStartedAt ?? undefined,
+    }}).catch(() => {});
+  }
+
+  // Criar lista de clientes (persons) e comandas históricas por dia
   const createdTabs: any[] = [];
 
   for (let d = startDaysAgo; d >= 0; d--) {
@@ -308,10 +329,10 @@ async function main() {
 
       const createdAt = new Date(day.getTime() + randInt(0, 10 * 60 * 60 * 1000)); // entre meio-dia e 10h
 
-      // cria pessoa (cliente) para a comanda
+      // cria pessoa (cliente) para a comanda usando nomes reais
       const person = await prisma.person.create({
         data: {
-          name: `Cliente ${d}-${t}-${randInt(1,9999)}`,
+          name: pick(personNames),
           tabId: '', // será atualizado depois
         },
       }).catch(async () => {
@@ -419,6 +440,96 @@ async function main() {
         // create person associated with tab
         await prisma.person.create({ data: { name: `Cliente ${tab.id.substring(0,6)}`, tabId: tab.id } }).catch(() => {});
       }
+
+      createdTabs.push(tab);
+    }
+  }
+
+  // Gerar comandas adicionais por garçom para enriquecer métricas do dashboard
+  console.log('\n🛠️  Gerando comandas adicionais por garçom (aumentando métricas)...');
+  for (const waiter of allWaiters) {
+    const extraTabsForWaiter = randInt(5, 15);
+    for (let k = 0; k < extraTabsForWaiter; k++) {
+      const createdAt = new Date(today.getTime() - randInt(1, startDaysAgo) * 24 * 60 * 60 * 1000 + randInt(0, 8) * 60 * 60 * 1000);
+      const ordersCount = randInt(1, 4);
+      const ordersData: any[] = [];
+      let total = 0;
+      for (let o = 0; o < ordersCount; o++) {
+        const menu = pick(items);
+        const qty = randInt(1, 3);
+        const unitPrice = menu.price;
+        const orderTotal = +(unitPrice * qty).toFixed(2);
+        total += orderTotal;
+        const created = new Date(createdAt.getTime() + randInt(0, 45) * 60 * 1000);
+        const sentToKitchenAt = new Date(created.getTime() + randInt(1, 10) * 60 * 1000);
+        const startedPreparingAt = new Date(sentToKitchenAt.getTime() + randInt(1, 5) * 60 * 1000);
+        const readyAt = new Date(startedPreparingAt.getTime() + randInt(5, 25) * 60 * 1000);
+        const deliveredAt = new Date(readyAt.getTime() + randInt(1, 10) * 60 * 1000);
+
+        ordersData.push({
+          menuItemId: menu.id,
+          quantity: qty,
+          unitPrice,
+          totalPrice: orderTotal,
+          status: 'DELIVERED',
+          notes: Math.random() < 0.05 ? 'Sem lactose' : null,
+          serviceChargeIncluded: Math.random() < 0.9,
+          sentToKitchenAt,
+          startedPreparingAt,
+          readyAt,
+          deliveredAt,
+          createdAt: created,
+          updatedAt: deliveredAt,
+        });
+      }
+
+      const paid = true;
+      const paidAt = new Date(createdAt.getTime() + randInt(20, 180) * 60 * 1000);
+
+      const tab = await prisma.tab.create({
+        data: {
+          tableId: null,
+          type: 'COUNTER',
+          total: +total.toFixed(2),
+          status: paid ? 'CLOSED' : 'OPEN',
+          paymentMethod: paid ? pick(['CASH','CREDIT_CARD','DEBIT_CARD','PIX']) : null,
+          paidAmount: paid ? +(total + (Math.random() < 0.85 ? total * 0.1 : 0)).toFixed(2) : null,
+          changeAmount: null,
+          serviceChargeIncluded: true,
+          serviceChargePaidSeparately: false,
+          serviceChargeAmount: +(total * 0.1).toFixed(2),
+          isUnifiedTab: false,
+          unifiedTabPersonCount: 1,
+          customerSeatedAt: new Date(createdAt.getTime() - randInt(1,10)*60*1000),
+          requestedBillAt: paid ? new Date(paidAt.getTime() - randInt(1,15)*60*1000) : null,
+          paidAt,
+          createdAt,
+          updatedAt: paidAt ?? createdAt,
+          closedAt: paid ? new Date(createdAt.getTime() + randInt(20, 300) * 60 * 1000) : null,
+          orders: { create: ordersData.map((od) => ({
+            menuItemId: od.menuItemId,
+            quantity: od.quantity,
+            unitPrice: od.unitPrice,
+            totalPrice: od.totalPrice,
+            status: od.status,
+            notes: od.notes,
+            serviceChargeIncluded: od.serviceChargeIncluded,
+            sentToKitchenAt: od.sentToKitchenAt,
+            startedPreparingAt: od.startedPreparingAt,
+            readyAt: od.readyAt,
+            deliveredAt: od.deliveredAt,
+            createdAt: od.createdAt,
+            updatedAt: od.updatedAt,
+          })) },
+          waiterHistory: {
+            create: {
+              waiterId: waiter.id,
+              assignedAt: new Date(createdAt.getTime() - randInt(1,5) * 60 * 1000),
+              removedAt: new Date(createdAt.getTime() + randInt(20,120) * 60 * 1000),
+            }
+          },
+        }
+      });
 
       createdTabs.push(tab);
     }

@@ -16,3 +16,5 @@ console.log(overview);
 ```
 
 To validate the OpenAPI spec locally, use `swagger-ui` or `redoc` pointing to `docs/openapi.yaml`.
+
+To validate the OpenAPI spec locallyi need to use the swagger

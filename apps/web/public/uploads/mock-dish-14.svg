@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="g14" x1="0" x2="1">
+      <stop offset="0%" stop-color="#fbc2eb"/>
+      <stop offset="100%" stop-color="#a6c1ee"/>
+    </linearGradient>
+    <style>
+      .bg{fill:url(#g14)}
+      .plate{fill:#fff;opacity:0.98}
+      .txt{font-family:Inter, Arial, sans-serif;fill:#374151;font-size:48px}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="800" rx="20"/>
+  <g transform="translate(120,110)">
+    <ellipse cx="480" cy="360" rx="360" ry="90" fill="rgba(0,0,0,0.06)"/>
+    <circle class="plate" cx="480" cy="300" r="280"/>
+    <text x="40" y="640" class="txt">Caipirinha</text>
+  </g>
+</svg>

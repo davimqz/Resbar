@@ -186,7 +186,7 @@ export class TableController {
 
         // Mark any active tab_waiter_history entries for open tabs as removed
         const openTabs = await prisma.tab.findMany({ where: { tableId: id, status: 'OPEN' }, select: { id: true } });
-        const tabIds = openTabs.map(t => t.id);
+        const tabIds = (openTabs as any[]).map((t: any) => t.id);
         if (tabIds.length > 0) {
           await prisma.tabWaiterHistory.updateMany({ where: { tabId: { in: tabIds }, removedAt: null }, data: { removedAt: new Date() } });
         }

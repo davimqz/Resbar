@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useLogout } from '../hooks/useAuth';
 import { UserRole } from '@resbar/shared';
+import logo from '../assets/logo-resbar.png';
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -116,7 +117,8 @@ export default function AppLayout() {
       {/* Sidebar Desktop */}
       <aside className="hidden sm:flex sm:flex-col sm:w-60 bg-white border-r border-slate-200">
         {/* Logo */}
-        <div className="p-5 border-b border-slate-200">
+        <div className="p-5 border-b border-slate-200 flex items-center gap-3">
+          <img src={logo} alt="Resbar" className="h-8 w-auto" />
           <h1 className="text-xl font-bold text-slate-900">Resbar</h1>
         </div>
 
@@ -127,7 +129,7 @@ export default function AppLayout() {
               <div key={link.path} className="space-y-1">
                 <button
                   onClick={() => setDashboardExpanded(!dashboardExpanded)}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-sm font-medium text-resbar-charcoal hover:bg-resbar-cream rounded-lg transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     {link.icon}
@@ -149,11 +151,10 @@ export default function AppLayout() {
                         key={child.path}
                         to={child.path}
                         className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
-                          isActive(child.path)
-                            ? 'bg-slate-100 text-slate-900 font-medium'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                        }`}
-                      >
+                            isActive(child.path)
+                              ? 'bg-resbar-cream text-resbar-softblack font-medium'
+                              : 'text-resbar-charcoal hover:bg-resbar-cream hover:text-resbar-softblack'
+                            }`}>
                         {child.label}
                       </Link>
                     ))}
@@ -165,11 +166,10 @@ export default function AppLayout() {
                 key={link.path}
                 to={link.path}
                 className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  isActive(link.path)
-                    ? 'bg-slate-100 text-slate-900'
-                    : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
+                    isActive(link.path)
+                      ? 'bg-resbar-cream text-resbar-softblack'
+                      : 'text-resbar-charcoal hover:bg-resbar-cream'
+                    }`}>
                 {link.icon}
                 <span>{link.label}</span>
               </Link>
@@ -179,18 +179,18 @@ export default function AppLayout() {
 
         {/* User Profile - Bottom */}
         {isAuthenticated && user && (
-          <div className="p-4 border-t border-slate-200">
+            <div className="p-4 border-t border-resbar-taupe">
             <div className="flex items-center gap-3 mb-3">
               {user.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-9 h-9 rounded-full" />
               ) : (
-                <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center">
-                  <span className="text-sm font-medium text-slate-600">{user.name.charAt(0)}</span>
+                <div className="w-9 h-9 rounded-full bg-resbar-cream flex items-center justify-center">
+                  <span className="text-sm font-medium text-resbar-charcoal">{user.name.charAt(0)}</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">{user.name}</div>
-                <div className="text-xs text-slate-500">{user.role}</div>
+                <div className="text-sm font-medium text-resbar-softblack truncate">{user.name}</div>
+                <div className="text-xs text-resbar-charcoal">{user.role}</div>
               </div>
             </div>
             <button
@@ -213,7 +213,10 @@ export default function AppLayout() {
           <div className="relative bg-white w-64 h-full shadow-xl flex flex-col">
             {/* Mobile Header */}
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+              <div className="flex items-center gap-3">
+                <img src={logo} alt="Resbar" className="h-6 w-auto" />
+                <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+              </div>
               <button onClick={() => setMobileOpen(false)} className="p-2 rounded-lg text-slate-600 hover:bg-slate-100">
                 <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -315,7 +318,10 @@ export default function AppLayout() {
       <main className="flex-1 overflow-y-auto bg-slate-50">
         {/* Mobile Top Bar */}
         <div className="sm:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="Resbar" className="h-6 w-auto" />
+            <h1 className="text-lg font-bold text-slate-900">Resbar</h1>
+          </div>
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"

@@ -21,7 +21,7 @@ export class DashboardController {
         },
       });
 
-      const dailyRevenue = dailyRevenueTabs.reduce((sum, tab) => sum + tab.total, 0);
+      const dailyRevenue = dailyRevenueTabs.reduce((sum: number, tab: any) => sum + (tab.total ?? 0), 0);
 
       // Contagem de pedidos por status
       const orderCounts = await prisma.order.groupBy({
@@ -31,11 +31,12 @@ export class DashboardController {
         },
       });
 
+      const oc = orderCounts as any[];
       const ordersCount = {
-        pending: orderCounts.find(o => o.status === 'PENDING')?._count.status || 0,
-        preparing: orderCounts.find(o => o.status === 'PREPARING')?._count.status || 0,
-        ready: orderCounts.find(o => o.status === 'READY')?._count.status || 0,
-        delivered: orderCounts.find(o => o.status === 'DELIVERED')?._count.status || 0,
+        pending: oc.find((o: any) => o.status === 'PENDING')?._count.status || 0,
+        preparing: oc.find((o: any) => o.status === 'PREPARING')?._count.status || 0,
+        ready: oc.find((o: any) => o.status === 'READY')?._count.status || 0,
+        delivered: oc.find((o: any) => o.status === 'DELIVERED')?._count.status || 0,
       };
 
       // Mesas ocupadas
@@ -67,7 +68,7 @@ export class DashboardController {
         take: 5,
       });
 
-      const menuItemIds = popularItemsData.map(item => item.menuItemId);
+      const menuItemIds = (popularItemsData as any[]).map((item: any) => item.menuItemId);
       const menuItems = await prisma.menuItem.findMany({
         where: {
           id: {
@@ -76,13 +77,13 @@ export class DashboardController {
         },
       });
 
-      const popularItems = popularItemsData.map(item => {
-        const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+      const popularItems = (popularItemsData as any[]).map((item: any) => {
+        const menuItem = (menuItems as any[]).find((mi: any) => mi.id === item.menuItemId);
         return {
           itemId: item.menuItemId,
           itemName: menuItem?.name || 'Item desconhecido',
-          totalSold: item._sum.quantity || 0,
-          revenue: item._sum.totalPrice || 0,
+          totalSold: item._sum?.quantity || 0,
+          revenue: item._sum?.totalPrice || 0,
         };
       });
 
@@ -103,7 +104,7 @@ export class DashboardController {
         },
       });
 
-      const tableIds = waiterStats.map(stat => stat.tableId).filter(Boolean) as string[];
+      const tableIds = (waiterStats as any[]).map((stat: any) => stat.tableId).filter(Boolean) as string[];
       const tables = await prisma.table.findMany({
         where: {
           id: {
@@ -117,8 +118,8 @@ export class DashboardController {
 
       const waiterPerformanceMap = new Map<string, { name: string; tablesServed: number; totalRevenue: number }>();
 
-      waiterStats.forEach(stat => {
-        const table = tables.find(t => t.id === stat.tableId);
+      (waiterStats as any[]).forEach((stat: any) => {
+        const table = (tables as any[]).find((t: any) => t.id === stat.tableId);
         if (table && table.waiter) {
           const existing = waiterPerformanceMap.get(table.waiterId!) || {
             name: table.waiter.name,
@@ -281,11 +282,12 @@ export class DashboardController {
         _count: { status: true },
       });
 
+      const og = ordersGroup as any[];
       const ordersCount = {
-        pending: ordersGroup.find(o => o.status === 'PENDING')?._count.status || 0,
-        preparing: ordersGroup.find(o => o.status === 'PREPARING')?._count.status || 0,
-        ready: ordersGroup.find(o => o.status === 'READY')?._count.status || 0,
-        delivered: ordersGroup.find(o => o.status === 'DELIVERED')?._count.status || 0,
+        pending: og.find((o: any) => o.status === 'PENDING')?._count.status || 0,
+        preparing: og.find((o: any) => o.status === 'PREPARING')?._count.status || 0,
+        ready: og.find((o: any) => o.status === 'READY')?._count.status || 0,
+        delivered: og.find((o: any) => o.status === 'DELIVERED')?._count.status || 0,
       };
 
       // Avg ticket (use paid tabs in range)

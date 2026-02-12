@@ -67,7 +67,7 @@ export class MetricsController {
 
       // Ticket médio (period)
       const paidTabs = await prisma.tab.findMany({ where: { paidAt: { gte: start, lte: end } }, select: { paidAmount: true, total: true } });
-      const sum = paidTabs.reduce((s, t) => s + (t.paidAmount ?? t.total ?? 0), 0);
+      const sum = paidTabs.reduce((s: number, t: any) => s + (t.paidAmount ?? t.total ?? 0), 0);
       const ticket = paidTabs.length ? sum / paidTabs.length : 0;
 
       // Clientes ativos (persons with tab open)
@@ -136,8 +136,8 @@ export class MetricsController {
 
       const k: KitchenPerformanceDTO = {
         avgPrepMinutes: avgPrep,
-        statusCounts: statusCounts.map(s => ({ status: s.status as any, count: s._count.status })),
-        delayed: (delayed as any[])?.map(d => ({ id: d.id, tabId: d.tab_id, menuItemId: d.menu_item_id, startedPreparingAt: d.started_preparing_at, status: d.status, secondsSinceStart: Number(d.seconds_since_start) })),
+        statusCounts: (statusCounts as any[]).map((s: any) => ({ status: s.status as any, count: s._count.status })),
+        delayed: (delayed as any[])?.map((d: any) => ({ id: d.id, tabId: d.tab_id, menuItemId: d.menu_item_id, startedPreparingAt: d.started_preparing_at, status: d.status, secondsSinceStart: Number(d.seconds_since_start) })),
       };
 
       res.json({ success: true, data: k });

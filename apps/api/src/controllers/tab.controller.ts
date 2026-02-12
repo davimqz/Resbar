@@ -226,7 +226,7 @@ export class TabController {
         throw new AppError(404, 'Comanda não encontrada');
       }
 
-      const subtotal = tab.orders.reduce((sum, order) => sum + order.totalPrice, 0);
+      const subtotal = tab.orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
       const serviceCharge = subtotal * DEFAULT_SERVICE_CHARGE_RATE;
       const total = subtotal + (tab.serviceChargeIncluded && !tab.serviceChargePaidSeparately ? serviceCharge : 0);
 
@@ -275,8 +275,8 @@ export class TabController {
         throw new AppError(404, 'Mesa não encontrada');
       }
 
-      const tabCalculations = table.tabs.map((tab) => {
-        const subtotal = tab.orders.reduce((sum, order) => sum + order.totalPrice, 0);
+      const tabCalculations = (table.tabs as any[]).map((tab: any) => {
+        const subtotal = (tab.orders as any[]).reduce((sum: number, order: any) => sum + order.totalPrice, 0);
         const serviceCharge = subtotal * DEFAULT_SERVICE_CHARGE_RATE;
         const total = subtotal + (tab.serviceChargeIncluded && !tab.serviceChargePaidSeparately ? serviceCharge : 0);
 
@@ -291,8 +291,8 @@ export class TabController {
         };
       });
 
-      const grandTotal = tabCalculations.reduce((sum, calc) => sum + calc.total, 0);
-      const totalServiceCharge = tabCalculations.reduce((sum, calc) =>
+      const grandTotal = tabCalculations.reduce((sum: number, calc: any) => sum + calc.total, 0);
+      const totalServiceCharge = tabCalculations.reduce((sum: number, calc: any) =>
         sum + (calc.serviceChargeIncluded ? calc.serviceCharge : 0), 0);
 
       const calculation = {
@@ -433,12 +433,12 @@ export class TabController {
       }
 
       // Contar quantas pessoas têm comandas ativas (incluindo a de destino)
-      const personCount = allTableTabs.filter(tab => tab.person).length;
+      const personCount = (allTableTabs as any[]).filter((tab: any) => tab.person).length;
 
       // Transferir todos os pedidos de TODAS as outras tabs para a tab de destino
-      const otherTabIds = allTableTabs
-        .filter(tab => tab.id !== toTabId)
-        .map(tab => tab.id);
+      const otherTabIds = (allTableTabs as any[])
+        .filter((tab: any) => tab.id !== toTabId)
+        .map((tab: any) => tab.id);
 
       if (otherTabIds.length > 0) {
         await prisma.order.updateMany({
@@ -460,7 +460,7 @@ export class TabController {
         where: { tabId: toTabId },
       });
 
-      const newTotal = allOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+      const newTotal = allOrders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
 
       // Atualizar tab de destino: marcar como unificada e salvar contagem de pessoas
       await prisma.tab.update({

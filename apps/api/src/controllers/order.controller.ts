@@ -9,7 +9,7 @@ async function updateTabTotal(tabId: string) {
     where: { tabId },
   });
 
-  const total = orders.reduce((sum, order) => sum + order.totalPrice, 0);
+  const total = orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
 
   await prisma.tab.update({
     where: { id: tabId },

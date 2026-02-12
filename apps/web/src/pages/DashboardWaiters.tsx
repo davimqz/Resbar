@@ -57,17 +57,6 @@ export default function DashboardWaiters() {
           </div>
           <p className="text-3xl font-bold text-indigo-600">{totalWaiters}</p>
           <p className="text-sm text-gray-500 mt-2">Equipe do período</p>
-          {/* If we have active waiters from dashboard stats, list them */}
-          {statsData?.activeWaiters && statsData.activeWaiters.length > 0 && (
-            <ul className="mt-3 space-y-2">
-              {statsData.activeWaiters.map((w) => (
-                <li key={w.id} className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{w.name}</span>
-                  <span className="text-xs text-gray-500">{w.onBreak ? 'Em intervalo' : 'Ativo'}</span>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">

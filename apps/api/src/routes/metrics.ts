@@ -14,6 +14,10 @@ router.get('/kitchen', authenticateToken, requireKitchen, (req, res, next) => me
 
 // Waiters ranking -> staff (waiter/admin)
 router.get('/waiters/ranking', authenticateToken, requireWaiter, (req, res, next) => metricsController.waitersRanking(req, res, next));
+// Waiters summary (KPIs) -> staff (waiter/admin)
+router.get('/waiters/summary', authenticateToken, requireWaiter, (req, res, next) => metricsController.waitersSummary(req, res, next));
+// Waiter detail (drill-down) -> staff (waiter/admin)
+router.get('/waiters/:id', authenticateToken, requireWaiter, (req, res, next) => metricsController.waiterDetail(req, res, next));
 
 // Menu endpoints -> staff/admin
 router.get('/menu/top-items', authenticateToken, requireAdmin, (req, res, next) => metricsController.topMenuItems(req, res, next));

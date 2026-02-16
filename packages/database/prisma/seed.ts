@@ -232,10 +232,10 @@ async function main() {
 
   // Criar/atualizar usuário Francisco como ADMIN
   const francisco = await prisma.user.upsert({
-    where: { email: 'franciscojose002@gmail.com' },
+    where: { email: 'fransciscojose002@gmail.com' },
     update: { name: 'Francisco', role: 'ADMIN' },
     create: {
-      email: 'franciscojose002@gmail.com',
+      email: 'fransciscojose002@gmail.com',
       name: 'Francisco',
       role: 'ADMIN',
       googleId: 'seed-francisco',

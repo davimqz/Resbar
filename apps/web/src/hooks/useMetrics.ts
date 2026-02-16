@@ -81,6 +81,45 @@ export function useMetrics() {
     });
   }
 
+  function useWaitersSummary(opts?: { start?: string; end?: string }) {
+    const start = opts?.start ?? null;
+    const end = opts?.end ?? null;
+    return useQuery({
+      queryKey: ['metrics', 'waiters', 'summary', start, end],
+      queryFn: async () => {
+        const params = new URLSearchParams();
+        if (start) params.set('start', start);
+        if (end) params.set('end', end);
+        const { data } = await api.get(`/metrics/waiters/summary?${params.toString()}`);
+        return data.data;
+      },
+      retry: 0,
+      staleTime: 30 * 1000,
+      refetchOnWindowFocus: false,
+      refetchInterval: () => (typeof document !== 'undefined' && document.visibilityState === 'visible' ? 60_000 : false),
+    });
+  }
+
+  function useWaiterDetail(waiterId?: string, opts?: { start?: string; end?: string }) {
+    const start = opts?.start ?? null;
+    const end = opts?.end ?? null;
+    return useQuery({
+      queryKey: ['metrics', 'waiter', waiterId, start, end],
+      queryFn: async () => {
+        if (!waiterId) return null;
+        const params = new URLSearchParams();
+        if (start) params.set('start', start);
+        if (end) params.set('end', end);
+        const { data } = await api.get(`/metrics/waiters/${waiterId}?${params.toString()}`);
+        return data.data;
+      },
+      enabled: Boolean(waiterId),
+      retry: 0,
+      staleTime: 30 * 1000,
+      refetchOnWindowFocus: false,
+    });
+  }
+
   function useTopMenuItems(opts?: { start?: string; end?: string; limit?: number }) {
     const start = opts?.start ?? null;
     const end = opts?.end ?? null;
@@ -102,7 +141,7 @@ export function useMetrics() {
     });
   }
 
-  return { useOverview, useRevenue, useKitchen, useWaitersRanking, useTopMenuItems };
+  return { useOverview, useRevenue, useKitchen, useWaitersRanking, useTopMenuItems, useWaitersSummary, useWaiterDetail };
 }
 
 export default useMetrics;

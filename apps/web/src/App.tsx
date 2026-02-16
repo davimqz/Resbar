@@ -13,6 +13,7 @@ import DashboardFinance from './pages/DashboardFinance';
 import DashboardOperations from './pages/DashboardOperations';
 import DashboardKitchen from './pages/DashboardKitchen';
 import DashboardWaiters from './pages/DashboardWaiters';
+import WaiterDetail from './pages/WaiterDetail';
 import DashboardMenu from './pages/DashboardMenu';
 import DashboardOverview from './pages/DashboardOverview';
 import { InventoryPage } from './pages/InventoryPage';
@@ -94,6 +95,7 @@ function App() {
             <Route path="operations" element={<DashboardOperations />} />
             <Route path="kitchen" element={<DashboardKitchen />} />
             <Route path="waiters" element={<DashboardWaiters />} />
+            <Route path="waiters/:id" element={<WaiterDetail />} />
             <Route path="menu" element={<DashboardMenu />} />
           </Route>
         </Route>

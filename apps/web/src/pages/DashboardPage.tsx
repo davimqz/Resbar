@@ -44,27 +44,6 @@ export function DashboardPage() {
 
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Garçons Ativos */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-500 text-sm font-medium">Garçons Ativos</h3>
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <FaChair className="w-6 h-6 text-indigo-700" />
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.activeWaiters?.length ?? 0}</p>
-          <p className="text-sm text-indigo-600 mt-2">Em turno</p>
-          {stats.activeWaiters && stats.activeWaiters.length > 0 && (
-            <ul className="mt-3 space-y-2 text-sm">
-              {stats.activeWaiters.map((w) => (
-                <li key={w.id} className="flex items-center justify-between">
-                  <span className="font-medium">{w.name}</span>
-                  <span className="text-xs text-gray-500">{w.onBreak ? 'Em intervalo' : 'Ativo'}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
         {/* Receita do Dia */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">

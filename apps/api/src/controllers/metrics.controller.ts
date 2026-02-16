@@ -151,13 +151,16 @@ export class MetricsController {
     try {
       const { start, end } = parseRange(req);
 
-      // Simple approach: join tab_waiter_history with tabs and sum by waiter
+      // Only count tabs where waiter was responsible at payment time to avoid duplicating revenue
       const rows = await prisma.$queryRaw`
         SELECT w.id AS waiter_id, w.name AS waiter_name, SUM(t.total)::double precision AS revenue, COUNT(DISTINCT t."tableId") AS tables_served
         FROM tab_waiter_history h
         JOIN waiters w ON w.id = h."waiterId"
         JOIN "tabs" t ON t.id = h."tabId"
-        WHERE t."paidAt" IS NOT NULL AND t."paidAt" >= ${start} AND t."paidAt" <= ${end}
+        WHERE t."paidAt" IS NOT NULL 
+          AND t."paidAt" >= ${start} 
+          AND t."paidAt" <= ${end}
+          AND (h."removedAt" IS NULL OR h."removedAt" > t."paidAt")
         GROUP BY w.id, w.name
         ORDER BY revenue DESC
         LIMIT 50
@@ -165,6 +168,199 @@ export class MetricsController {
 
       res.json({ success: true, data: convertBigInt(rows) as WaiterRankingDTO[] });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /metrics/waiters/summary?start=&end=
+  async waitersSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { start, end } = parseRange(req);
+
+      const revenueRow = await prisma.$queryRaw`
+        SELECT SUM(COALESCE("paidAmount", total)) AS revenue
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+
+      const revenue = Number((revenueRow as any[])[0]?.revenue ?? 0);
+
+      const closedCountRow = await prisma.$queryRaw`
+        SELECT COUNT(*) AS closed_count
+        FROM "tabs"
+        WHERE status = 'CLOSED'
+          AND "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+
+      const closedCount = Number((closedCountRow as any[])[0]?.closed_count ?? 0);
+
+      const avgTicketRow = await prisma.$queryRaw`
+        SELECT AVG(COALESCE("paidAmount", total)) AS avg_ticket
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+
+      const avgTicket = Number((avgTicketRow as any[])[0]?.avg_ticket ?? 0);
+
+      // Average delivery time (orders: deliveredAt - createdAt) in seconds
+      const avgDeliveryRow = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("deliveredAt" - "createdAt"))) AS avg_delivery_seconds
+        FROM "orders"
+        WHERE "deliveredAt" IS NOT NULL
+          AND "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+      `;
+
+      const avgDeliverySeconds = Number((avgDeliveryRow as any[])[0]?.avg_delivery_seconds ?? 0);
+
+      // Average time to payment (tabs: paidAt - createdAt) in seconds
+      const avgPayRow = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("paidAt" - "createdAt"))) AS avg_to_pay_seconds
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+
+      const avgToPaySeconds = Number((avgPayRow as any[])[0]?.avg_to_pay_seconds ?? 0);
+
+      const payload = {
+        revenue,
+        closedCount,
+        avgTicket,
+        avgDeliverySeconds,
+        avgToPaySeconds,
+      };
+
+      res.json({ success: true, data: payload });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /metrics/waiters/:id?start=&end=
+  async waiterDetail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { start, end } = parseRange(req);
+      const waiterId = req.params.id;
+
+      // Diagnostic logging to help track 500 errors when calling this endpoint
+      console.log('[metrics] waiterDetail request', { waiterId, start: start?.toISOString?.(), end: end?.toISOString?.() });
+
+      // Get waiter name
+      const waiter = await prisma.waiter.findUnique({ where: { id: waiterId }, select: { name: true } });
+      if (!waiter) {
+        return res.status(404).json({ success: false, error: 'Garçom não encontrado' });
+      }
+
+      // Aggregates for the waiter (revenue, closed_count, avg_ticket)
+      // Only count tabs where waiter was responsible at payment time (removedAt IS NULL or removedAt > paidAt)
+      const agg = await prisma.$queryRaw`
+        SELECT
+          SUM(COALESCE(t."paidAmount", t.total)) AS revenue,
+          COUNT(DISTINCT t.id) AS closed_count,
+          AVG(COALESCE(t."paidAmount", t.total)) AS avg_ticket
+        FROM tab_waiter_history h
+        JOIN "tabs" t ON t.id = h."tabId"
+        WHERE h."waiterId" = ${waiterId}
+          AND t."paidAt" IS NOT NULL
+          AND t."paidAt" >= ${start}
+          AND t."paidAt" <= ${end}
+          AND (h."removedAt" IS NULL OR h."removedAt" > t."paidAt")
+      `;
+
+      const revenue = Number((agg as any[])[0]?.revenue ?? 0);
+      const closedCount = Number((agg as any[])[0]?.closed_count ?? 0);
+      const avgTicket = Number((agg as any[])[0]?.avg_ticket ?? 0);
+
+      // Average delivery time for orders in tabs served by waiter (seconds)
+      // Only count orders created while waiter was responsible
+      const avgDeliveryRow = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."createdAt"))) AS avg_delivery_seconds
+        FROM "orders" o
+        JOIN "tabs" t ON t.id = o."tabId"
+        JOIN tab_waiter_history h ON h."tabId" = t.id
+        WHERE h."waiterId" = ${waiterId}
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+          AND o."createdAt" >= h."assignedAt"
+          AND (h."removedAt" IS NULL OR o."createdAt" <= h."removedAt")
+      `;
+
+      const avgDeliverySeconds = Number((avgDeliveryRow as any[])[0]?.avg_delivery_seconds ?? 0);
+
+      // Average time to payment for tabs in seconds
+      // Only count tabs where waiter was responsible at payment time
+      const avgPayRow = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM (t."paidAt" - t."createdAt"))) AS avg_to_pay_seconds
+        FROM "tabs" t
+        JOIN tab_waiter_history h ON h."tabId" = t.id
+        WHERE h."waiterId" = ${waiterId}
+          AND t."paidAt" IS NOT NULL
+          AND t."paidAt" >= ${start}
+          AND t."paidAt" <= ${end}
+          AND (h."removedAt" IS NULL OR h."removedAt" > t."paidAt")
+      `;
+
+      const avgToPaySeconds = Number((avgPayRow as any[])[0]?.avg_to_pay_seconds ?? 0);
+
+      // Recent tabs (distinct) for this waiter
+      // Only show tabs where waiter was responsible at payment (or still open)
+      const recentTabsRaw = await prisma.$queryRaw`
+        SELECT DISTINCT t.id, t."createdAt", t."paidAt", t.total, t."paidAmount", t."closedAt"
+        FROM tab_waiter_history h
+        JOIN "tabs" t ON t.id = h."tabId"
+        WHERE h."waiterId" = ${waiterId}
+          AND (t."paidAt" IS NULL OR (t."paidAt" >= ${start} AND t."paidAt" <= ${end}))
+          AND (h."removedAt" IS NULL OR (t."paidAt" IS NOT NULL AND h."removedAt" > t."paidAt"))
+        ORDER BY t."paidAt" DESC NULLS LAST
+        LIMIT 50
+      `;
+
+      // Convert dates to ISO strings for proper JSON serialization
+      const recentTabs = (recentTabsRaw as any[]).map((t: any) => ({
+        ...t,
+        createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : null,
+        paidAt: t.paidAt ? new Date(t.paidAt).toISOString() : null,
+        closedAt: t.closedAt ? new Date(t.closedAt).toISOString() : null,
+      }));
+
+      // Average responsibility duration for assignments (seconds)
+      const respRow = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM (COALESCE(h."removedAt", now()) - h."assignedAt"))) AS avg_assignment_seconds,
+               COUNT(h.id) AS assignments_count
+        FROM tab_waiter_history h
+        WHERE h."waiterId" = ${waiterId}
+          AND h."assignedAt" >= ${start}
+          AND h."assignedAt" <= ${end}
+      `;
+
+      const avgAssignmentSeconds = Number((respRow as any[])[0]?.avg_assignment_seconds ?? 0);
+      const assignmentsCount = Number((respRow as any[])[0]?.assignments_count ?? 0);
+
+      const payload = {
+        waiterId,
+        waiterName: waiter.name,
+        revenue,
+        closedCount,
+        avgTicket,
+        avgDeliverySeconds,
+        avgToPaySeconds,
+        recentTabs: convertBigInt(recentTabs), // Already has ISO date strings
+        avgAssignmentSeconds,
+        assignmentsCount,
+      };
+
+      res.json({ success: true, data: payload });
+    } catch (error) {
+      console.error('[metrics] waiterDetail error', { error, waiterId: req.params.id });
       next(error);
     }
   }

@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import KPICards from '../components/dashboard/KPICards';
 import TimeSeriesChart from '../components/dashboard/TimeSeriesChart';
+import WaiterRankingTable from '../components/dashboard/WaiterRankingTable';
+import AlertsList from '../components/dashboard/AlertsList';
+import PeriodComparison from '../components/dashboard/PeriodComparison';
+import DistributionPanel from '../components/dashboard/DistributionPanel';
 import useOverviewHook from '../hooks/useOverview';
 import { useDashboard } from '../hooks/useDashboard';
 import { FaDollarSign, FaUtensils, FaUserTie, FaCog, FaFire } from 'react-icons/fa';
@@ -11,7 +15,7 @@ function toISO(d: Date) {
 }
 
 export default function DashboardOverview() {
-  const { useOverviewData, useRevenue } = useOverviewHook();
+  const { useOverviewData, useOverviewWaiters, useRevenue } = useOverviewHook();
   const { useStats } = useDashboard();
 
   const [preset, setPreset] = useState<'today' | '7d' | '30d' | 'custom'>('today');
@@ -32,15 +36,17 @@ export default function DashboardOverview() {
   }, [preset, customStart, customEnd]);
 
   const overviewQ = useOverviewData({ start, end });
+  const waitersQ = useOverviewWaiters({ start, end });
   const revenueQ = useRevenue({ start, end, groupBy: 'day' });
   const statsQ = useStats();
 
   // If any query errored, surface the error to the user
-  if (overviewQ.isError || revenueQ.isError || statsQ.isError) {
+  if (overviewQ.isError || revenueQ.isError || statsQ.isError || waitersQ.isError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar Visão Geral</h2>
         {overviewQ.isError && <div className="text-red-600 mb-1">Overview: {(overviewQ.error as any)?.message ?? String(overviewQ.error)}</div>}
+        {waitersQ.isError && <div className="text-red-600 mb-1">Garçons: {(waitersQ.error as any)?.message ?? String(waitersQ.error)}</div>}
         {revenueQ.isError && <div className="text-red-600 mb-1">Receita: {(revenueQ.error as any)?.message ?? String(revenueQ.error)}</div>}
         {statsQ.isError && <div className="text-red-600 mb-1">Stats: {(statsQ.error as any)?.message ?? String(statsQ.error)}</div>}
         <div className="mt-3 text-sm text-red-700">Verifique a API ou suas permissões de administrador.</div>
@@ -48,34 +54,47 @@ export default function DashboardOverview() {
     );
   }
 
-  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading;
+  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading;
 
   const kpis = [] as { label: string; value: string | number; sub?: string }[];
 
-  if (overviewQ.data) {
-    const rev = overviewQ.data.revenue;
-    const todayRev = typeof rev === 'object' ? rev.today ?? 0 : rev ?? 0;
-    const last7 = typeof rev === 'object' ? rev.last7d ?? 0 : 0;
-    const last30 = typeof rev === 'object' ? rev.last30d ?? 0 : 0;
-    const ticket = overviewQ.data.avgTicket ?? overviewQ.data.ticket ?? 0;
-    const tablesOccupied = (overviewQ.data.tables && overviewQ.data.tables.occupied) ?? overviewQ.data.tablesOccupied ?? 0;
-    const occupancyRate = overviewQ.data.tables?.occupancyRate ?? 0;
-    const openTabs = overviewQ.data.openTabs ?? 0;
-
-    kpis.push({ label: 'Receita (hoje)', value: formatCurrency(todayRev), sub: '↑ Hoje' });
-    kpis.push({ label: 'Receita (7 dias)', value: formatCurrency(last7), sub: 'Últimos 7 dias' });
-    kpis.push({ label: 'Receita (30 dias)', value: formatCurrency(last30), sub: 'Últimos 30 dias' });
-    kpis.push({ label: 'Ticket Médio', value: formatCurrency(ticket), sub: 'Por comanda' });
-    kpis.push({ label: 'Taxa de Ocupação', value: `${Math.round(occupancyRate)}%`, sub: `${tablesOccupied} mesas ocupadas` });
-    kpis.push({ label: 'Comandas Abertas', value: openTabs, sub: 'Em atendimento' });
+  // KPIs Executivos focados em garçons
+  if (waitersQ.data?.kpis) {
+    const kpisData = waitersQ.data.kpis;
+    kpis.push({ 
+      label: '💰 Receita Total (Garçons)', 
+      value: formatCurrency(kpisData.totalRevenue), 
+      sub: 'No período selecionado' 
+    });
+    kpis.push({ 
+      label: '🎟 Ticket Médio Geral', 
+      value: formatCurrency(kpisData.avgTicket), 
+      sub: 'Por comanda paga' 
+    });
+    kpis.push({ 
+      label: '⚡ Tempo Médio Entrega', 
+      value: kpisData.avgDeliveryTime > 0 ? `${Math.round(kpisData.avgDeliveryTime)} min` : '-', 
+      sub: 'Da cozinha ao cliente' 
+    });
+    kpis.push({ 
+      label: '🧾 Comandas Fechadas', 
+      value: kpisData.closedTabs, 
+      sub: 'Pagas no período' 
+    });
+    kpis.push({ 
+      label: '🕒 Receita/Hora Média', 
+      value: formatCurrency(kpisData.revenuePerHour), 
+      sub: 'Por hora trabalhada' 
+    });
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-6">
+      {/* Header com filtros */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Visão Geral</h1>
-          <p className="text-sm text-gray-500">Métricas consolidadas e visão do dia</p>
+          <h1 className="text-2xl font-semibold">Visão Geral - Performance de Garçons</h1>
+          <p className="text-sm text-gray-500">Métricas focadas em desempenho e eficiência do time</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -93,71 +112,120 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      <div>{loading ? <div>Carregando...</div> : <KPICards items={kpis} />}</div>
-
-      <div className="mt-6">
-        <h2 className="text-lg font-medium mb-4">Receita — Evolução</h2>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <TimeSeriesChart data={overviewQ.data?.revenueSeries ?? revenueQ.data ?? []} dataKey="revenue" xKey={overviewQ.data?.revenueSeries ? 'day' : 'bucket'} />
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <p className="mt-4 text-gray-600">Carregando dados...</p>
         </div>
+      ) : (
+        <>
+          {/* 1️⃣ KPIs EXECUTIVOS */}
+          <div>
+            <KPICards items={kpis} />
+          </div>
 
-        <div className="mt-8 mb-4">
-          <h2 className="text-lg font-semibold mb-2">Detalhes por Seção</h2>
-          <p className="text-sm text-gray-500">Clique para ver análises detalhadas</p>
-        </div>
+          {/* 5️⃣ COMPARAÇÃO COM PERÍODO ANTERIOR */}
+          {waitersQ.data?.comparison && (
+            <PeriodComparison data={waitersQ.data.comparison} />
+          )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a href="/dashboard/finance" className="group block p-6 bg-gradient-to-br from-green-50 to-white rounded-xl border border-green-200 hover:shadow-lg transition-all hover:scale-105">
-            <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                <FaDollarSign className="w-6 h-6 text-green-700" />
-              </div>
-              <div className="text-sm font-medium text-green-700">Análise Financeira</div>
+          {/* 4️⃣ ALERTAS INTELIGENTES */}
+          {waitersQ.data?.alerts && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">🚨 Alertas Inteligentes</h2>
+              <AlertsList alerts={waitersQ.data.alerts} />
             </div>
-            <div className="text-sm text-gray-600">Receita detalhada, formas de pagamento e breakdowns</div>
-          </a>
+          )}
 
-          <a href="/dashboard/operations" className="group block p-6 bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-200 hover:shadow-lg transition-all hover:scale-105">
-            <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                <FaCog className="w-6 h-6 text-blue-700" />
-              </div>
-              <div className="text-sm font-medium text-blue-700">Operações</div>
+          {/* 2️⃣ RANKING DE GARÇONS */}
+          {waitersQ.data?.waiterRanking && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">📊 Ranking de Garçons</h2>
+              <WaiterRankingTable data={waitersQ.data.waiterRanking} />
             </div>
-            <div className="text-sm text-gray-600">Eficiência operacional, tempo de atendimento e fluxo</div>
-          </a>
+          )}
 
-          <a href="/dashboard/kitchen" className="group block p-6 bg-gradient-to-br from-orange-50 to-white rounded-xl border border-orange-200 hover:shadow-lg transition-all hover:scale-105">
-            <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                <FaFire className="w-6 h-6 text-orange-700" />
-              </div>
-              <div className="text-sm font-medium text-orange-700">Cozinha</div>
+          {/* 3️⃣ DISTRIBUIÇÃO E EQUILÍBRIO */}
+          {waitersQ.data?.distribution && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">📈 Distribuição e Equilíbrio</h2>
+              <DistributionPanel 
+                tabsDistribution={waitersQ.data.distribution.tabsDistribution}
+                avgTimeByWaiter={waitersQ.data.distribution.avgTimeByWaiter}
+                waiterHistory={waitersQ.data.distribution.waiterHistory}
+              />
             </div>
-            <div className="text-sm text-gray-600">Performance, SLA e tempo de preparo</div>
-          </a>
+          )}
 
-          <a href="/dashboard/menu" className="group block p-6 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-200 hover:shadow-lg transition-all hover:scale-105">
-            <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                <FaUtensils className="w-6 h-6 text-purple-700" />
-              </div>
-              <div className="text-sm font-medium text-purple-700">Cardápio</div>
+          {/* Evolução da Receita */}
+          <div>
+            <h2 className="text-lg font-medium mb-4">Receita — Evolução</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <TimeSeriesChart data={overviewQ.data?.revenueSeries ?? revenueQ.data ?? []} dataKey="revenue" xKey={overviewQ.data?.revenueSeries ? 'day' : 'bucket'} />
             </div>
-            <div className="text-sm text-gray-600">Top items, receita por produto e categorias</div>
-          </a>
+          </div>
 
-          <a href="/dashboard/waiters" className="group block p-6 bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-200 hover:shadow-lg transition-all hover:scale-105">
-            <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
-                <FaUserTie className="w-6 h-6 text-indigo-700" />
-              </div>
-              <div className="text-sm font-medium text-indigo-700">Garçons</div>
+          {/* Links para outras seções */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold mb-2">Detalhes por Seção</h2>
+              <p className="text-sm text-gray-500">Clique para ver análises detalhadas</p>
             </div>
-            <div className="text-sm text-gray-600">Ranking, receita e performance individual</div>
-          </a>
-        </div>
-      </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <a href="/dashboard/finance" className="group block p-6 bg-gradient-to-br from-green-50 to-white rounded-xl border border-green-200 hover:shadow-lg transition-all hover:scale-105">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                    <FaDollarSign className="w-6 h-6 text-green-700" />
+                  </div>
+                  <div className="text-sm font-medium text-green-700">Análise Financeira</div>
+                </div>
+                <div className="text-sm text-gray-600">Receita detalhada, formas de pagamento e breakdowns</div>
+              </a>
+
+              <a href="/dashboard/operations" className="group block p-6 bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-200 hover:shadow-lg transition-all hover:scale-105">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <FaCog className="w-6 h-6 text-blue-700" />
+                  </div>
+                  <div className="text-sm font-medium text-blue-700">Operações</div>
+                </div>
+                <div className="text-sm text-gray-600">Eficiência operacional, tempo de atendimento e fluxo</div>
+              </a>
+
+              <a href="/dashboard/kitchen" className="group block p-6 bg-gradient-to-br from-orange-50 to-white rounded-xl border border-orange-200 hover:shadow-lg transition-all hover:scale-105">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                    <FaFire className="w-6 h-6 text-orange-700" />
+                  </div>
+                  <div className="text-sm font-medium text-orange-700">Cozinha</div>
+                </div>
+                <div className="text-sm text-gray-600">Performance, SLA e tempo de preparo</div>
+              </a>
+
+              <a href="/dashboard/menu" className="group block p-6 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-200 hover:shadow-lg transition-all hover:scale-105">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <FaUtensils className="w-6 h-6 text-purple-700" />
+                  </div>
+                  <div className="text-sm font-medium text-purple-700">Cardápio</div>
+                </div>
+                <div className="text-sm text-gray-600">Top items, receita por produto e categorias</div>
+              </a>
+
+              <a href="/dashboard/waiters" className="group block p-6 bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-200 hover:shadow-lg transition-all hover:scale-105">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
+                    <FaUserTie className="w-6 h-6 text-indigo-700" />
+                  </div>
+                  <div className="text-sm font-medium text-indigo-700">Garçons</div>
+                </div>
+                <div className="text-sm text-gray-600">Ranking, receita e performance individual</div>
+              </a>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

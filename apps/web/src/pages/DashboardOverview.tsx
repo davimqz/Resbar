@@ -15,6 +15,17 @@ import OperationalFlow from '../components/dashboard/OperationalFlow';
 import TableEfficiency from '../components/dashboard/TableEfficiency';
 import OperationalAlerts from '../components/dashboard/OperationalAlerts';
 import OperationalStatus from '../components/dashboard/OperationalStatus';
+import KitchenKPIs from '../components/dashboard/KitchenKPIs';
+import KitchenItemsAnalysis from '../components/dashboard/KitchenItemsAnalysis';
+import KitchenTemporal from '../components/dashboard/KitchenTemporal';
+import KitchenAlerts from '../components/dashboard/KitchenAlerts';
+import KitchenStatus from '../components/dashboard/KitchenStatus';
+import MenuKPIs from '../components/dashboard/MenuKPIs';
+import MenuTopItems from '../components/dashboard/MenuTopItems';
+import MenuStrategicMatrix from '../components/dashboard/MenuStrategicMatrix';
+import MenuPerformance from '../components/dashboard/MenuPerformance';
+import MenuOperationalImpact from '../components/dashboard/MenuOperationalImpact';
+import MenuAlerts from '../components/dashboard/MenuAlerts';
 import useOverviewHook from '../hooks/useOverview';
 import { useDashboard } from '../hooks/useDashboard';
 import { FaDollarSign, FaUtensils, FaUserTie, FaCog, FaFire } from 'react-icons/fa';
@@ -25,13 +36,13 @@ function toISO(d: Date) {
 }
 
 export default function DashboardOverview() {
-  const { useOverviewData, useOverviewWaiters, useOverviewFinance, useOverviewOperations, useRevenue } = useOverviewHook();
+  const { useOverviewData, useOverviewWaiters, useOverviewFinance, useOverviewOperations, useOverviewKitchen, useOverviewMenu, useRevenue } = useOverviewHook();
   const { useStats } = useDashboard();
 
   const [preset, setPreset] = useState<'today' | '7d' | '30d' | 'custom'>('today');
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
-  const [activeSection, setActiveSection] = useState<'finance' | 'waiters' | 'operations'>('finance');
+  const [activeSection, setActiveSection] = useState<'finance' | 'waiters' | 'operations' | 'kitchen' | 'menu'>('finance');
 
   const { start, end } = useMemo(() => {
     const now = new Date();
@@ -50,11 +61,13 @@ export default function DashboardOverview() {
   const financeQ = useOverviewFinance({ start, end });
   const waitersQ = useOverviewWaiters({ start, end });
   const operationsQ = useOverviewOperations({ start, end });
+  const kitchenQ = useOverviewKitchen({ start, end });
+  const menuQ = useOverviewMenu({ start, end });
   const revenueQ = useRevenue({ start, end, groupBy: 'day' });
   const statsQ = useStats();
 
   // If any query errored, surface the error to the user
-  if (overviewQ.isError || revenueQ.isError || statsQ.isError || waitersQ.isError || financeQ.isError || operationsQ.isError) {
+  if (overviewQ.isError || revenueQ.isError || statsQ.isError || waitersQ.isError || financeQ.isError || operationsQ.isError || kitchenQ.isError || menuQ.isError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar Visão Geral</h2>
@@ -62,6 +75,8 @@ export default function DashboardOverview() {
         {overviewQ.isError && <div className="text-red-600 mb-1">Overview: {(overviewQ.error as any)?.message ?? String(overviewQ.error)}</div>}
         {waitersQ.isError && <div className="text-red-600 mb-1">Garçons: {(waitersQ.error as any)?.message ?? String(waitersQ.error)}</div>}
         {operationsQ.isError && <div className="text-red-600 mb-1">Operacional: {(operationsQ.error as any)?.message ?? String(operationsQ.error)}</div>}
+        {kitchenQ.isError && <div className="text-red-600 mb-1">Cozinha: {(kitchenQ.error as any)?.message ?? String(kitchenQ.error)}</div>}
+        {menuQ.isError && <div className="text-red-600 mb-1">Cardápio: {(menuQ.error as any)?.message ?? String(menuQ.error)}</div>}
         {revenueQ.isError && <div className="text-red-600 mb-1">Receita: {(revenueQ.error as any)?.message ?? String(revenueQ.error)}</div>}
         {statsQ.isError && <div className="text-red-600 mb-1">Stats: {(statsQ.error as any)?.message ?? String(statsQ.error)}</div>}
         <div className="mt-3 text-sm text-red-700">Verifique a API ou suas permissões de administrador.</div>
@@ -69,7 +84,7 @@ export default function DashboardOverview() {
     );
   }
 
-  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading || financeQ.isLoading || operationsQ.isLoading;
+  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading || financeQ.isLoading || operationsQ.isLoading || kitchenQ.isLoading || menuQ.isLoading;
 
   const kpis = [] as { label: string; value: string | number; sub?: string }[];
 
@@ -159,6 +174,26 @@ export default function DashboardOverview() {
             }`}
           >
             ⚙️ Operacional
+          </button>
+          <button
+            onClick={() => setActiveSection('kitchen')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeSection === 'kitchen'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🔥 Cozinha
+          </button>
+          <button
+            onClick={() => setActiveSection('menu')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeSection === 'menu'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🍽 Cardápio
           </button>
         </div>
       </div>
@@ -313,6 +348,128 @@ export default function DashboardOverview() {
                   <OperationalStatus
                     orderStatusDistribution={operationsQ.data.status.orderStatusDistribution}
                     tabStatusDistribution={operationsQ.data.status.tabStatusDistribution}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* SEÇÃO COZINHA */}
+          {activeSection === 'kitchen' && kitchenQ.data && (
+            <>
+              {/* 1️⃣ KPIs DA COZINHA */}
+              <div className="mb-8">
+                <KitchenKPIs
+                  avgPrepTime={kitchenQ.data.kpis.avgPrepTime}
+                  avgTotalTime={kitchenQ.data.kpis.avgTotalTime}
+                  delayedPercentage={kitchenQ.data.kpis.delayedPercentage}
+                  delayedCount={kitchenQ.data.kpis.delayedCount}
+                  ordersVolume={kitchenQ.data.kpis.ordersVolume}
+                  peakSimultaneous={kitchenQ.data.kpis.peakSimultaneous}
+                  slaMinutes={kitchenQ.data.kpis.slaMinutes}
+                />
+              </div>
+
+              {/* 4️⃣ ALERTAS DA COZINHA */}
+              {kitchenQ.data.alerts && (
+                <div className="mb-8">
+                  <KitchenAlerts alerts={kitchenQ.data.alerts} />
+                </div>
+              )}
+
+              {/* 2️⃣ ANÁLISE DE ITENS */}
+              {kitchenQ.data.items && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">🍽 Análise de Itens</h2>
+                  <KitchenItemsAnalysis
+                    byPrepTime={kitchenQ.data.items.byPrepTime}
+                    topSelling={kitchenQ.data.items.topSelling}
+                    critical={kitchenQ.data.items.critical}
+                  />
+                </div>
+              )}
+
+              {/* 3️⃣ DISTRIBUIÇÃO TEMPORAL */}
+              {kitchenQ.data.temporal && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">⏱ Distribuição Temporal</h2>
+                  <KitchenTemporal
+                    temporal={kitchenQ.data.temporal}
+                    slaMinutes={kitchenQ.data.kpis.slaMinutes}
+                  />
+                </div>
+              )}
+
+              {/* 5️⃣ STATUS DOS PEDIDOS */}
+              {kitchenQ.data.status && (
+                <div className="mb-8">
+                  <KitchenStatus status={kitchenQ.data.status} />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* SEÇÃO CARDÁPIO */}
+          {activeSection === 'menu' && menuQ.data && (
+            <>
+              {/* 1️⃣ KPIs DO CARDÁPIO */}
+              <div className="mb-8">
+                <MenuKPIs
+                  totalRevenue={menuQ.data.kpis.totalRevenue}
+                  totalItems={menuQ.data.kpis.totalItems}
+                  unavailableCount={menuQ.data.kpis.unavailableCount}
+                  avgPrepTime={menuQ.data.kpis.avgPrepTime}
+                  concentrationRatio={menuQ.data.kpis.concentrationRatio}
+                />
+              </div>
+
+              {/* 5️⃣ ALERTAS DO CARDÁPIO */}
+              {menuQ.data.alerts && (
+                <div className="mb-8">
+                  <MenuAlerts alerts={menuQ.data.alerts} />
+                </div>
+              )}
+
+              {/* 2️⃣ TOP ITENS E RECEITA POR CATEGORIA */}
+              {menuQ.data.topItems && menuQ.data.categoryDistribution && (
+                <div className="mb-8">
+                  <MenuTopItems
+                    byVolume={menuQ.data.topItems.byVolume}
+                    byRevenue={menuQ.data.topItems.byRevenue}
+                    categoryDistribution={menuQ.data.categoryDistribution}
+                  />
+                </div>
+              )}
+
+              {/* 3️⃣ ANÁLISE ESTRATÉGICA */}
+              {menuQ.data.strategicMatrix && menuQ.data.bottlenecks && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">📊 Análise Estratégica</h2>
+                  <MenuStrategicMatrix
+                    strategicMatrix={menuQ.data.strategicMatrix}
+                    bottlenecks={menuQ.data.bottlenecks}
+                  />
+                </div>
+              )}
+
+              {/* 4️⃣ PERFORMANCE E DISPONIBILIDADE */}
+              {menuQ.data.lowVolumeItems && menuQ.data.unavailableItems && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">📉 Performance e Disponibilidade</h2>
+                  <MenuPerformance
+                    lowVolumeItems={menuQ.data.lowVolumeItems}
+                    unavailableItems={menuQ.data.unavailableItems}
+                  />
+                </div>
+              )}
+
+              {/* 6️⃣ IMPACTO OPERACIONAL */}
+              {menuQ.data.categoryPrepTime && menuQ.data.itemDelayRate && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">⚙️ Impacto Operacional</h2>
+                  <MenuOperationalImpact
+                    categoryPrepTime={menuQ.data.categoryPrepTime}
+                    itemDelayRate={menuQ.data.itemDelayRate}
                   />
                 </div>
               )}

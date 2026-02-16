@@ -1418,4 +1418,840 @@ export class DashboardController {
       next(error);
     }
   }
+
+  // GET /api/dashboard/overview-kitchen?start=...&end=...
+  // Dashboard Visão Geral focado em métricas da cozinha
+  async getOverviewKitchen(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { start: startQ, end: endQ } = req.query as Record<string, string>;
+      const now = new Date();
+      const start = startQ ? new Date(startQ) : (() => { const d = new Date(now); d.setHours(0,0,0,0); return d; })();
+      const end = endQ ? new Date(endQ) : now;
+
+      // === 1) KPIs PRINCIPAIS ===
+      
+      // Tempo médio de preparo (sentToKitchenAt -> deliveredAt representa tempo total na cozinha)
+      // Como não temos inicio_preparo separado, usamos sentToKitchenAt como início
+      const avgPrepTimeResult = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("deliveredAt" - "sentToKitchenAt")))/60 AS avg_minutes
+        FROM "orders"
+        WHERE "sentToKitchenAt" IS NOT NULL
+          AND "deliveredAt" IS NOT NULL
+          AND "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+      `;
+      const avgPrepTime = Number((avgPrepTimeResult as any[])[0]?.avg_minutes ?? 0);
+
+      // Tempo médio total até entrega (sentToKitchenAt -> deliveredAt)
+      const avgTotalTimeResult = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("deliveredAt" - "sentToKitchenAt")))/60 AS avg_minutes
+        FROM "orders"
+        WHERE "sentToKitchenAt" IS NOT NULL
+          AND "deliveredAt" IS NOT NULL
+          AND "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+      `;
+      const avgTotalTime = Number((avgTotalTimeResult as any[])[0]?.avg_minutes ?? 0);
+
+      // Percentual de pedidos atrasados (SLA: 20 minutos)
+      const SLA_MINUTES = 20;
+      const delayedOrdersResult = await prisma.$queryRaw`
+        SELECT 
+          COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM ("deliveredAt" - "sentToKitchenAt"))/60 > ${SLA_MINUTES}) AS delayed_count,
+          COUNT(*) AS total_count
+        FROM "orders"
+        WHERE "sentToKitchenAt" IS NOT NULL
+          AND "deliveredAt" IS NOT NULL
+          AND "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+      `;
+      const delayedCount = Number((delayedOrdersResult as any[])[0]?.delayed_count ?? 0);
+      const totalDelivered = Number((delayedOrdersResult as any[])[0]?.total_count ?? 0);
+      const delayedPercentage = totalDelivered > 0 ? (delayedCount / totalDelivered) * 100 : 0;
+
+      // Volume de pedidos no período
+      const ordersVolume = await prisma.order.count({
+        where: {
+          createdAt: { gte: start, lte: end }
+        }
+      });
+
+      // Pedidos simultâneos (pico) - aproximação: máximo de pedidos em preparo por hora
+      const peakSimultaneousResult = await prisma.$queryRaw`
+        SELECT 
+          date_trunc('hour', "sentToKitchenAt") AS hour,
+          COUNT(*) AS simultaneous_count
+        FROM "orders"
+        WHERE "sentToKitchenAt" IS NOT NULL
+          AND "sentToKitchenAt" >= ${start}
+          AND "sentToKitchenAt" <= ${end}
+          AND status IN ('PREPARING', 'READY')
+        GROUP BY hour
+        ORDER BY simultaneous_count DESC
+        LIMIT 1
+      `;
+      const peakSimultaneous = Number((peakSimultaneousResult as any[])[0]?.simultaneous_count ?? 0);
+
+      // === 2) ANÁLISE POR ITEM ===
+      
+      // Itens com maior tempo médio de preparo
+      const itemsByPrepTimeResult = await prisma.$queryRaw`
+        SELECT 
+          mi.id AS item_id,
+          mi.name AS item_name,
+          mi.category AS item_category,
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt")))/60 AS avg_prep_minutes,
+          COUNT(*) AS orders_count,
+          SUM(o.quantity) AS total_quantity
+        FROM "orders" o
+        JOIN "menu_items" mi ON mi.id = o."menuItemId"
+        WHERE o."sentToKitchenAt" IS NOT NULL
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name, mi.category
+        ORDER BY avg_prep_minutes DESC
+        LIMIT 15
+      `;
+      
+      const itemsByPrepTime = (itemsByPrepTimeResult as any[]).map((r: any) => ({
+        itemId: r.item_id,
+        itemName: r.item_name,
+        itemCategory: r.item_category,
+        avgPrepMinutes: Number(r.avg_prep_minutes ?? 0),
+        ordersCount: Number(r.orders_count ?? 0),
+        totalQuantity: Number(r.total_quantity ?? 0)
+      }));
+
+      // Itens mais vendidos
+      const topItemsResult = await prisma.$queryRaw`
+        SELECT 
+          mi.id AS item_id,
+          mi.name AS item_name,
+          mi.category AS item_category,
+          SUM(o.quantity) AS total_quantity,
+          COUNT(DISTINCT o.id) AS orders_count,
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt")))/60 AS avg_prep_minutes
+        FROM "orders" o
+        JOIN "menu_items" mi ON mi.id = o."menuItemId"
+        WHERE o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name, mi.category
+        ORDER BY total_quantity DESC
+        LIMIT 15
+      `;
+      
+      const topItems = (topItemsResult as any[]).map((r: any) => ({
+        itemId: r.item_id,
+        itemName: r.item_name,
+        itemCategory: r.item_category,
+        totalQuantity: Number(r.total_quantity ?? 0),
+        ordersCount: Number(r.orders_count ?? 0),
+        avgPrepMinutes: Number(r.avg_prep_minutes ?? 0)
+      }));
+
+      // Itens críticos (alto tempo + alto volume)
+      const criticalItems = itemsByPrepTime
+        .filter(item => {
+          const avgTime = itemsByPrepTime.reduce((sum, i) => sum + i.avgPrepMinutes, 0) / itemsByPrepTime.length;
+          const avgVolume = itemsByPrepTime.reduce((sum, i) => sum + i.totalQuantity, 0) / itemsByPrepTime.length;
+          return item.avgPrepMinutes > avgTime * 1.2 && item.totalQuantity > avgVolume * 0.8;
+        })
+        .slice(0, 10);
+
+      // === 3) DISTRIBUIÇÃO TEMPORAL ===
+      
+      // Tempo médio por faixa horária
+      const avgTimeByHourResult = await prisma.$queryRaw`
+        SELECT 
+          EXTRACT(HOUR FROM o."sentToKitchenAt") AS hour,
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt")))/60 AS avg_prep_minutes,
+          COUNT(*) AS orders_count
+        FROM "orders" o
+        WHERE o."sentToKitchenAt" IS NOT NULL
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY hour
+        ORDER BY hour
+      `;
+      
+      const avgTimeByHour = (avgTimeByHourResult as any[]).map((r: any) => ({
+        hour: Number(r.hour),
+        avgPrepMinutes: Number(r.avg_prep_minutes ?? 0),
+        ordersCount: Number(r.orders_count ?? 0)
+      }));
+
+      // Volume de pedidos por hora
+      const volumeByHourResult = await prisma.$queryRaw`
+        SELECT 
+          EXTRACT(HOUR FROM "createdAt") AS hour,
+          COUNT(*) AS orders_count
+        FROM "orders"
+        WHERE "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+        GROUP BY hour
+        ORDER BY hour
+      `;
+      
+      const volumeByHour = (volumeByHourResult as any[]).map((r: any) => ({
+        hour: Number(r.hour),
+        ordersCount: Number(r.orders_count ?? 0)
+      }));
+
+      // === 4) ALERTAS INTELIGENTES ===
+      
+      const alerts = [];
+
+      // Período anterior para comparação
+      const periodDuration = end.getTime() - start.getTime();
+      const previousStart = new Date(start.getTime() - periodDuration);
+      const previousEnd = new Date(start.getTime());
+
+      // Tempo médio período anterior
+      const previousAvgTimeResult = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("deliveredAt" - "sentToKitchenAt")))/60 AS avg_minutes
+        FROM "orders"
+        WHERE "sentToKitchenAt" IS NOT NULL
+          AND "deliveredAt" IS NOT NULL
+          AND "createdAt" >= ${previousStart}
+          AND "createdAt" < ${previousEnd}
+      `;
+      const previousAvgTime = Number((previousAvgTimeResult as any[])[0]?.avg_minutes ?? 0);
+
+      // Alerta: Aumento de tempo médio
+      if (previousAvgTime > 0) {
+        const timeChange = ((avgPrepTime - previousAvgTime) / previousAvgTime) * 100;
+        if (timeChange > 15) {
+          alerts.push({
+            type: 'PREP_TIME_INCREASE',
+            severity: 'high',
+            message: `Tempo médio de preparo aumentou ${timeChange.toFixed(1)}% em relação ao período anterior`,
+            value: avgPrepTime,
+            previous: previousAvgTime,
+            change: timeChange
+          });
+        }
+      }
+
+      // Alerta: Percentual de atraso alto
+      if (delayedPercentage > 25) {
+        alerts.push({
+          type: 'HIGH_DELAY_RATE',
+          severity: 'high',
+          message: `${delayedPercentage.toFixed(1)}% dos pedidos estão atrasados (SLA: ${SLA_MINUTES} min)`,
+          value: delayedPercentage,
+          threshold: 25,
+          delayedCount
+        });
+      }
+
+      // Volume anterior
+      const previousVolume = await prisma.order.count({
+        where: {
+          createdAt: { gte: previousStart, lt: previousEnd }
+        }
+      });
+
+      // Alerta: Crescimento de volume sem capacidade
+      if (previousVolume > 0 && previousAvgTime > 0) {
+        const volumeChange = ((ordersVolume - previousVolume) / previousVolume) * 100;
+        const timeChange = ((avgPrepTime - previousAvgTime) / previousAvgTime) * 100;
+        
+        if (volumeChange > 20 && timeChange > 10) {
+          alerts.push({
+            type: 'VOLUME_WITHOUT_CAPACITY',
+            severity: 'medium',
+            message: `Volume aumentou ${volumeChange.toFixed(1)}% mas tempo de preparo também subiu ${timeChange.toFixed(1)}%`,
+            volumeChange,
+            timeChange
+          });
+        }
+      }
+
+      // Alerta: Item crítico com tempo fora da curva
+      if (itemsByPrepTime.length > 0 && avgPrepTime > 0) {
+        const criticalItem = itemsByPrepTime.find(item => item.avgPrepMinutes > avgPrepTime * 2);
+        if (criticalItem) {
+          alerts.push({
+            type: 'CRITICAL_ITEM',
+            severity: 'medium',
+            message: `Item "${criticalItem.itemName}" está ${((criticalItem.avgPrepMinutes / avgPrepTime - 1) * 100).toFixed(0)}% acima do tempo médio`,
+            itemName: criticalItem.itemName,
+            value: criticalItem.avgPrepMinutes,
+            average: avgPrepTime
+          });
+        }
+      }
+
+      // === 5) STATUS OPERACIONAL ===
+      
+      // Status dos pedidos
+      const orderStatusResult = await prisma.order.groupBy({
+        by: ['status'],
+        where: {
+          createdAt: { gte: start, lte: end }
+        },
+        _count: { status: true }
+      });
+
+      const totalOrders = orderStatusResult.reduce((sum, r) => sum + r._count.status, 0);
+      const orderStatus = (orderStatusResult as any[]).map((r: any) => ({
+        status: r.status,
+        count: r._count.status,
+        percentage: totalOrders > 0 ? (r._count.status / totalOrders) * 100 : 0
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          // KPIs Principais
+          kpis: {
+            avgPrepTime,
+            avgTotalTime,
+            delayedPercentage,
+            delayedCount,
+            ordersVolume,
+            peakSimultaneous,
+            slaMinutes: SLA_MINUTES
+          },
+          // Análise por Item
+          items: {
+            byPrepTime: itemsByPrepTime,
+            topSelling: topItems,
+            critical: criticalItems
+          },
+          // Distribuição Temporal
+          temporal: {
+            avgTimeByHour,
+            volumeByHour
+          },
+          // Alertas
+          alerts,
+          // Status
+          status: orderStatus
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  getOverviewMenu = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { start: startParam, end: endParam } = req.query;
+      
+      const start = startParam ? new Date(startParam as string) : (() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+      })();
+
+      const end = endParam ? new Date(endParam as string) : new Date();
+
+      // Calcular período anterior para comparações
+      const duration = end.getTime() - start.getTime();
+      const previousStart = new Date(start.getTime() - duration);
+      const previousEnd = start;
+
+      // === 1) TOP ITENS MAIS VENDIDOS (por quantidade) ===
+      const topItemsByVolume: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          mi.name as "itemName",
+          mi.category as "itemCategory",
+          mi.price as "itemPrice",
+          mi.available as "itemAvailable",
+          SUM(o.quantity) as "totalQuantity",
+          COUNT(DISTINCT o.id) as "ordersCount",
+          SUM(o.quantity * mi.price) as "totalRevenue"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."createdAt" >= ${start} AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name, mi.category, mi.price, mi.available
+        ORDER BY "totalQuantity" DESC
+        LIMIT 10
+      `;
+
+      // === 2) TOP ITENS POR RECEITA ===
+      const topItemsByRevenue: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          mi.name as "itemName",
+          mi.category as "itemCategory",
+          mi.price as "itemPrice",
+          SUM(o.quantity * mi.price) as "totalRevenue",
+          SUM(o.quantity) as "totalQuantity",
+          COUNT(DISTINCT o.id) as "ordersCount"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."createdAt" >= ${start} AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name, mi.category, mi.price
+        ORDER BY "totalRevenue" DESC
+        LIMIT 10
+      `;
+
+      // === 3) RECEITA POR CATEGORIA ===
+      const revenueByCategory: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.category as "category",
+          SUM(o.quantity * mi.price) as "totalRevenue",
+          SUM(o.quantity) as "totalQuantity",
+          COUNT(DISTINCT o.id) as "ordersCount",
+          COUNT(DISTINCT mi.id) as "itemsCount"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."createdAt" >= ${start} AND o."createdAt" <= ${end}
+        GROUP BY mi.category
+        ORDER BY "totalRevenue" DESC
+      `;
+
+      const totalRevenue = revenueByCategory.reduce((sum, c) => sum + parseFloat(c.totalRevenue || 0), 0);
+
+      const categoryDistribution = revenueByCategory.map((cat: any) => ({
+        category: cat.category || 'Sem categoria',
+        totalRevenue: parseFloat(cat.totalRevenue || 0),
+        totalQuantity: parseInt(cat.totalQuantity || 0),
+        ordersCount: parseInt(cat.ordersCount || 0),
+        itemsCount: parseInt(cat.itemsCount || 0),
+        revenuePercentage: totalRevenue > 0 ? (parseFloat(cat.totalRevenue || 0) / totalRevenue) * 100 : 0
+      }));
+
+      // === 4) TEMPO MÉDIO DE PREPARO POR ITEM ===
+      const prepTimeByItem: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          mi.name as "itemName",
+          mi.category as "itemCategory",
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60) as "avgPrepMinutes",
+          SUM(o.quantity) as "totalQuantity",
+          COUNT(o.id) as "ordersCount"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."sentToKitchenAt" IS NOT NULL 
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start} 
+          AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name, mi.category
+        ORDER BY "avgPrepMinutes" DESC
+        LIMIT 15
+      `;
+
+      const itemsWithPrepTime = prepTimeByItem.map((item: any) => ({
+        itemId: item.itemId,
+        itemName: item.itemName,
+        itemCategory: item.itemCategory,
+        avgPrepMinutes: parseFloat(item.avgPrepMinutes || 0),
+        totalQuantity: parseInt(item.totalQuantity || 0),
+        ordersCount: parseInt(item.ordersCount || 0)
+      }));
+
+      // === 5) ITENS INDISPONÍVEIS ===
+      const unavailableItems = await prisma.menuItem.findMany({
+        where: { available: false },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          price: true
+        }
+      });
+
+      // Pegar vendas históricas dos itens indisponíveis (últimos 30 dias)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const unavailableWithHistory = await Promise.all(
+        unavailableItems.map(async (item) => {
+          const history: any[] = await prisma.$queryRaw`
+            SELECT 
+              SUM(quantity) as "totalQuantity",
+              COUNT(id) as "ordersCount"
+            FROM orders
+            WHERE "menuItemId" = ${item.id}
+              AND "createdAt" >= ${thirtyDaysAgo}
+              AND "createdAt" <= ${end}
+          `;
+          
+          return {
+            itemId: item.id,
+            itemName: item.name,
+            itemCategory: item.category,
+            itemPrice: parseFloat(item.price.toString()),
+            historicalVolume: parseInt(history[0]?.totalQuantity || 0)
+          };
+        })
+      );
+
+      // === 6) MATRIZ VOLUME x PREÇO (Análise Estratégica) ===
+      
+      // Calcular médias para classificação
+      const allItemsData: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          mi.name as "itemName",
+          mi.category as "itemCategory",
+          mi.price as "itemPrice",
+          mi.available as "itemAvailable",
+          SUM(o.quantity) as "totalQuantity",
+          SUM(o.quantity * mi.price) as "totalRevenue",
+          COUNT(o.id) as "ordersCount"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."createdAt" >= ${start} AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name, mi.category, mi.price, mi.available
+      `;
+
+      const volumes = allItemsData.map(i => parseInt(i.totalQuantity || 0));
+      const prices = allItemsData.map(i => parseFloat(i.itemPrice || 0));
+      
+      const medianVolume = volumes.length > 0 
+        ? volumes.sort((a, b) => a - b)[Math.floor(volumes.length / 2)] 
+        : 0;
+      const medianPrice = prices.length > 0 
+        ? prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)] 
+        : 0;
+
+      const strategicMatrix = allItemsData.map((item: any) => {
+        const volume = parseInt(item.totalQuantity || 0);
+        const price = parseFloat(item.itemPrice || 0);
+        
+        let quadrant: string;
+        if (volume >= medianVolume && price >= medianPrice) {
+          quadrant = 'star'; // Item estrela
+        } else if (volume >= medianVolume && price < medianPrice) {
+          quadrant = 'popular'; // Popular
+        } else if (volume < medianVolume && price >= medianPrice) {
+          quadrant = 'premium'; // Premium
+        } else {
+          quadrant = 'problematic'; // Problemático
+        }
+
+        return {
+          itemId: item.itemId,
+          itemName: item.itemName,
+          itemCategory: item.itemCategory,
+          itemPrice: price,
+          totalQuantity: volume,
+          totalRevenue: parseFloat(item.totalRevenue || 0),
+          ordersCount: parseInt(item.ordersCount || 0),
+          quadrant
+        };
+      });
+
+      // Agrupar por quadrante
+      const matrixByQuadrant = {
+        star: strategicMatrix.filter(i => i.quadrant === 'star'),
+        popular: strategicMatrix.filter(i => i.quadrant === 'popular'),
+        premium: strategicMatrix.filter(i => i.quadrant === 'premium'),
+        problematic: strategicMatrix.filter(i => i.quadrant === 'problematic')
+      };
+
+      // === 7) GARGALOS ESTRATÉGICOS (Alto Volume + Alto Tempo) ===
+      
+      const avgVolume = allItemsData.length > 0 
+        ? allItemsData.reduce((sum, i) => sum + parseInt(i.totalQuantity || 0), 0) / allItemsData.length 
+        : 0;
+      
+      const avgPrepTime = itemsWithPrepTime.length > 0 
+        ? itemsWithPrepTime.reduce((sum, i) => sum + i.avgPrepMinutes, 0) / itemsWithPrepTime.length 
+        : 0;
+
+      const bottlenecks = itemsWithPrepTime
+        .filter(item => {
+          const hasHighVolume = item.totalQuantity > avgVolume * 0.8;
+          const hasHighTime = item.avgPrepMinutes > avgPrepTime * 1.2;
+          return hasHighVolume && hasHighTime;
+        })
+        .sort((a, b) => (b.totalQuantity * b.avgPrepMinutes) - (a.totalQuantity * a.avgPrepMinutes))
+        .slice(0, 10);
+
+      // === 8) ITENS COM BAIXO VOLUME ===
+      
+      const lowVolumeItems = allItemsData
+        .filter(item => parseInt(item.totalQuantity || 0) < avgVolume * 0.5)
+        .map((item: any) => ({
+          itemId: item.itemId,
+          itemName: item.itemName,
+          itemCategory: item.itemCategory,
+          itemPrice: parseFloat(item.itemPrice || 0),
+          totalQuantity: parseInt(item.totalQuantity || 0),
+          totalRevenue: parseFloat(item.totalRevenue || 0),
+          ordersCount: parseInt(item.ordersCount || 0)
+        }))
+        .sort((a, b) => a.totalQuantity - b.totalQuantity);
+
+      // === 9) CONCENTRAÇÃO DE RECEITA ===
+      
+      const sortedByRevenue = [...allItemsData]
+        .sort((a, b) => parseFloat(b.totalRevenue || 0) - parseFloat(a.totalRevenue || 0));
+      
+      let cumulativeRevenue = 0;
+      let itemsFor80Pct = 0;
+      const threshold80 = totalRevenue * 0.8;
+      
+      for (const item of sortedByRevenue) {
+        cumulativeRevenue += parseFloat(item.totalRevenue || 0);
+        itemsFor80Pct++;
+        if (cumulativeRevenue >= threshold80) break;
+      }
+
+      const concentrationRatio = allItemsData.length > 0 
+        ? (itemsFor80Pct / allItemsData.length) * 100 
+        : 0;
+
+      // === 10) TEMPO MÉDIO POR CATEGORIA ===
+      
+      const prepTimeByCategory: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.category as "category",
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60) as "avgPrepMinutes",
+          COUNT(o.id) as "ordersCount",
+          SUM(o.quantity) as "totalQuantity"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."sentToKitchenAt" IS NOT NULL 
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start} 
+          AND o."createdAt" <= ${end}
+        GROUP BY mi.category
+        ORDER BY "avgPrepMinutes" DESC
+      `;
+
+      const categoryPrepTime = prepTimeByCategory.map((cat: any) => ({
+        category: cat.category || 'Sem categoria',
+        avgPrepMinutes: parseFloat(cat.avgPrepMinutes || 0),
+        ordersCount: parseInt(cat.ordersCount || 0),
+        totalQuantity: parseInt(cat.totalQuantity || 0)
+      }));
+
+      // === 11) PERCENTUAL DE ATRASO POR ITEM ===
+      
+      const SLA_MINUTES = 20;
+      
+      const delayByItem: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          mi.name as "itemName",
+          mi.category as "itemCategory",
+          COUNT(o.id) as "totalOrders",
+          COUNT(o.id) FILTER (
+            WHERE EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60 > ${SLA_MINUTES}
+          ) as "delayedOrders"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."sentToKitchenAt" IS NOT NULL 
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start} 
+          AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name, mi.category
+        HAVING COUNT(o.id) >= 5
+        ORDER BY "delayedOrders" DESC
+        LIMIT 15
+      `;
+
+      const itemDelayRate = delayByItem.map((item: any) => {
+        const total = parseInt(item.totalOrders || 0);
+        const delayed = parseInt(item.delayedOrders || 0);
+        return {
+          itemId: item.itemId,
+          itemName: item.itemName,
+          itemCategory: item.itemCategory,
+          totalOrders: total,
+          delayedOrders: delayed,
+          delayPercentage: total > 0 ? (delayed / total) * 100 : 0
+        };
+      });
+
+      // === 12) COMPARAÇÃO COM PERÍODO ANTERIOR (para alertas) ===
+      
+      const previousItemsData: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          SUM(o.quantity) as "totalQuantity",
+          SUM(o.quantity * mi.price) as "totalRevenue"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."createdAt" >= ${previousStart} AND o."createdAt" < ${previousEnd}
+        GROUP BY mi.id
+      `;
+
+      const previousMap = new Map(
+        previousItemsData.map((item: any) => [
+          item.itemId,
+          {
+            quantity: parseInt(item.totalQuantity || 0),
+            revenue: parseFloat(item.totalRevenue || 0)
+          }
+        ])
+      );
+
+      const previousPrepTime: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60) as "avgPrepMinutes"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE o."sentToKitchenAt" IS NOT NULL 
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${previousStart} 
+          AND o."createdAt" < ${previousEnd}
+        GROUP BY mi.id
+      `;
+
+      const previousPrepMap = new Map(
+        previousPrepTime.map((item: any) => [
+          item.itemId,
+          parseFloat(item.avgPrepMinutes || 0)
+        ])
+      );
+
+      // === 13) ALERTAS INTELIGENTES ===
+      
+      const alerts: any[] = [];
+
+      // Alerta 1: Item muito vendido ficando indisponível
+      unavailableWithHistory.forEach((item) => {
+        if (item.historicalVolume > avgVolume * 0.8) {
+          alerts.push({
+            type: 'HIGH_DEMAND_UNAVAILABLE',
+            severity: 'high',
+            message: `"${item.itemName}" está indisponível, mas tinha alta demanda (${item.historicalVolume} vendas nos últimos 30 dias)`,
+            itemId: item.itemId,
+            itemName: item.itemName,
+            historicalVolume: item.historicalVolume,
+            avgVolume
+          });
+        }
+      });
+
+      // Alerta 2: Crescimento de tempo médio de preparo
+      itemsWithPrepTime.forEach((item) => {
+        const previousTime = previousPrepMap.get(item.itemId);
+        if (previousTime && previousTime > 0) {
+          const increase = ((item.avgPrepMinutes - previousTime) / previousTime) * 100;
+          if (increase > 25) {
+            alerts.push({
+              type: 'PREP_TIME_INCREASE',
+              severity: increase > 50 ? 'high' : 'medium',
+              message: `Tempo de preparo de "${item.itemName}" aumentou ${increase.toFixed(1)}%`,
+              itemId: item.itemId,
+              itemName: item.itemName,
+              previousTime,
+              currentTime: item.avgPrepMinutes,
+              increasePct: increase
+            });
+          }
+        }
+      });
+
+      // Alerta 3: Queda de venda de item estratégico (top 10)
+      const top10Ids = topItemsByVolume.slice(0, 10).map(i => i.itemId);
+      allItemsData.forEach((item: any) => {
+        if (top10Ids.includes(item.itemId)) {
+          const previous = previousMap.get(item.itemId);
+          if (previous && previous.quantity > 0) {
+            const currentQty = parseInt(item.totalQuantity || 0);
+            const decrease = ((previous.quantity - currentQty) / previous.quantity) * 100;
+            if (decrease > 30) {
+              alerts.push({
+                type: 'STRATEGIC_ITEM_DECLINE',
+                severity: 'medium',
+                message: `Queda de ${decrease.toFixed(1)}% nas vendas de "${item.itemName}" (item estratégico)`,
+                itemId: item.itemId,
+                itemName: item.itemName,
+                previousQuantity: previous.quantity,
+                currentQuantity: currentQty,
+                decreasePct: decrease
+              });
+            }
+          }
+        }
+      });
+
+      // Alerta 4: Concentração de receita excessiva
+      if (concentrationRatio < 30 && allItemsData.length > 5) {
+        const top3Revenue = sortedByRevenue.slice(0, 3).reduce(
+          (sum, i) => sum + parseFloat(i.totalRevenue || 0), 
+          0
+        );
+        const top3Pct = totalRevenue > 0 ? (top3Revenue / totalRevenue) * 100 : 0;
+        
+        if (top3Pct > 60) {
+          alerts.push({
+            type: 'REVENUE_CONCENTRATION',
+            severity: 'medium',
+            message: `${top3Pct.toFixed(1)}% da receita vem de apenas 3 itens — risco de dependência`,
+            top3Items: sortedByRevenue.slice(0, 3).map((i: any) => i.itemName),
+            concentrationPct: top3Pct
+          });
+        }
+      }
+
+      // Alerta 5: Itens problemáticos (baixo volume + baixo preço)
+      const problematicCount = matrixByQuadrant.problematic.length;
+      if (problematicCount > allItemsData.length * 0.3) {
+        alerts.push({
+          type: 'TOO_MANY_PROBLEMATIC',
+          severity: 'low',
+          message: `${problematicCount} itens com baixo volume e baixo preço — considere revisar cardápio`,
+          problematicCount,
+          items: matrixByQuadrant.problematic.slice(0, 5).map(i => i.itemName)
+        });
+      }
+
+      // === RESPOSTA FINAL ===
+      
+      res.json({
+        success: true,
+        data: {
+          // KPIs Principais
+          kpis: {
+            totalRevenue,
+            totalItems: allItemsData.length,
+            unavailableCount: unavailableItems.length,
+            avgPrepTime,
+            concentrationRatio
+          },
+          // Top Itens
+          topItems: {
+            byVolume: topItemsByVolume.slice(0, 5).map((item: any) => ({
+              itemId: item.itemId,
+              itemName: item.itemName,
+              itemCategory: item.itemCategory,
+              itemPrice: parseFloat(item.itemPrice || 0),
+              totalQuantity: parseInt(item.totalQuantity || 0),
+              ordersCount: parseInt(item.ordersCount || 0),
+              totalRevenue: parseFloat(item.totalRevenue || 0)
+            })),
+            byRevenue: topItemsByRevenue.slice(0, 5).map((item: any) => ({
+              itemId: item.itemId,
+              itemName: item.itemName,
+              itemCategory: item.itemCategory,
+              itemPrice: parseFloat(item.itemPrice || 0),
+              totalRevenue: parseFloat(item.totalRevenue || 0),
+              totalQuantity: parseInt(item.totalQuantity || 0),
+              ordersCount: parseInt(item.ordersCount || 0)
+            }))
+          },
+          // Distribuição por Categoria
+          categoryDistribution,
+          categoryPrepTime,
+          // Análise Estratégica
+          strategicMatrix: matrixByQuadrant,
+          bottlenecks,
+          // Performance
+          lowVolumeItems: lowVolumeItems.slice(0, 10),
+          itemDelayRate,
+          unavailableItems: unavailableWithHistory,
+          // Análise de Preparo
+          prepTimeByItem: itemsWithPrepTime,
+          // Alertas
+          alerts
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

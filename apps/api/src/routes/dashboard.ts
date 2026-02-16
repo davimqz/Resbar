@@ -12,6 +12,8 @@ router.get('/overview', authenticateToken, requireAdmin, controller.getOverview.
 router.get('/overview-waiters', authenticateToken, requireAdmin, controller.getOverviewWaiters.bind(controller));
 router.get('/overview-finance', authenticateToken, requireAdmin, controller.getOverviewFinance.bind(controller));
 router.get('/overview-operations', authenticateToken, requireAdmin, controller.getOverviewOperations.bind(controller));
+router.get('/overview-kitchen', authenticateToken, requireAdmin, controller.getOverviewKitchen.bind(controller));
+router.get('/overview-menu', authenticateToken, requireAdmin, controller.getOverviewMenu.bind(controller));
 router.get('/finance/summary', authenticateToken, requireAdmin, controller.getFinanceSummary.bind(controller));
 router.get('/operational-metrics', authenticateToken, requireAdmin, controller.getOperationalMetrics.bind(controller));
 

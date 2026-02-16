@@ -57,6 +57,24 @@ export function useOverview() {
     });
   }
 
+  function useOverviewOperations(opts?: { start?: string; end?: string }) {
+    return useQuery({
+      queryKey: ['dashboard', 'overview-operations', opts],
+      queryFn: async () => {
+        const params = new URLSearchParams();
+        if (opts?.start) params.set('start', opts.start);
+        if (opts?.end) params.set('end', opts.end);
+        const url = params.toString() ? `/dashboard/overview-operations?${params.toString()}` : '/dashboard/overview-operations';
+        const { data } = await api.get(url);
+        return data.data;
+      },
+      retry: 0,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchInterval: false,
+    });
+  }
+
   function useRevenue(opts?: { start?: string; end?: string; groupBy?: 'hour' | 'day' }) {
     return useQuery({
       queryKey: ['metrics', 'revenue', opts],
@@ -75,7 +93,7 @@ export function useOverview() {
     });
   }
 
-  return { useOverviewData, useOverviewWaiters, useOverviewFinance, useRevenue };
+  return { useOverviewData, useOverviewWaiters, useOverviewFinance, useOverviewOperations, useRevenue };
 }
 
 export default useOverview;

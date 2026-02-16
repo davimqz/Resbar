@@ -1083,4 +1083,339 @@ export class DashboardController {
     } catch (error) {
       next(error);
     }
-  }}
+  }
+
+  // GET /api/dashboard/overview-operations?start=...&end=...
+  // Dashboard Visão Geral focado em métricas operacionais
+  async getOverviewOperations(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { start: startQ, end: endQ } = req.query as Record<string, string>;
+      const now = new Date();
+      const start = startQ ? new Date(startQ) : (() => { const d = new Date(now); d.setHours(0,0,0,0); return d; })();
+      const end = endQ ? new Date(endQ) : now;
+
+      // === 1) KPIs OPERACIONAIS ===
+      
+      // Tempo médio até entrega (sentToKitchenAt -> deliveredAt)
+      const avgDeliveryTimeResult = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("deliveredAt" - "sentToKitchenAt")))/60 AS avg_minutes
+        FROM "orders"
+        WHERE "sentToKitchenAt" IS NOT NULL
+          AND "deliveredAt" IS NOT NULL
+          AND "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+      `;
+      const avgDeliveryTime = Number((avgDeliveryTimeResult as any[])[0]?.avg_minutes ?? 0);
+
+      // Tempo médio até pagamento (customerSeatedAt -> paidAt)
+      const avgTimeToPaymentResult = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("paidAt" - "customerSeatedAt")))/60 AS avg_minutes
+        FROM "tabs"
+        WHERE "customerSeatedAt" IS NOT NULL
+          AND "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+      const avgTimeToPayment = Number((avgTimeToPaymentResult as any[])[0]?.avg_minutes ?? 0);
+
+      // Comandas fechadas (throughput)
+      const closedTabsCount = await prisma.tab.count({
+        where: {
+          status: 'CLOSED',
+          closedAt: { gte: start, lte: end }
+        }
+      });
+
+      // Throughput por hora
+      const periodHours = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const throughputPerHour = closedTabsCount / periodHours;
+
+      // Taxa de utilização de mesas
+      const totalTables = await prisma.table.count();
+      const occupancyData = await prisma.$queryRaw`
+        SELECT 
+          COUNT(DISTINCT "tableId") AS tables_used,
+          AVG(EXTRACT(EPOCH FROM (COALESCE("closedAt", ${end}) - "createdAt")))/3600 AS avg_occupied_hours
+        FROM "tabs"
+        WHERE type = 'TABLE'
+          AND "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+      `;
+      const tablesUsed = Number((occupancyData as any[])[0]?.tables_used ?? 0);
+      const avgOccupiedHours = Number((occupancyData as any[])[0]?.avg_occupied_hours ?? 0);
+      const utilizationRate = totalTables > 0 ? (tablesUsed / totalTables) * 100 : 0;
+
+      // Taxa de rotatividade de mesas
+      const tableTurnoverRate = totalTables > 0 ? closedTabsCount / totalTables : 0;
+
+      // === 2) FLUXO OPERACIONAL ===
+      
+      // Pedidos por hora (heatmap)
+      const ordersByHourResult = await prisma.$queryRaw`
+        SELECT 
+          EXTRACT(HOUR FROM "createdAt") AS hour,
+          COUNT(*) AS count
+        FROM "orders"
+        WHERE "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+        GROUP BY hour
+        ORDER BY hour
+      `;
+      
+      const ordersByHour = (ordersByHourResult as any[]).map((r: any) => ({
+        hour: Number(r.hour),
+        count: Number(r.count ?? 0)
+      }));
+
+      // Comandas por hora
+      const tabsByHourResult = await prisma.$queryRaw`
+        SELECT 
+          EXTRACT(HOUR FROM "createdAt") AS hour,
+          COUNT(*) AS count
+        FROM "tabs"
+        WHERE "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+        GROUP BY hour
+        ORDER BY hour
+      `;
+      
+      const tabsByHour = (tabsByHourResult as any[]).map((r: any) => ({
+        hour: Number(r.hour),
+        count: Number(r.count ?? 0)
+      }));
+
+      // Tempo médio por faixa horária
+      const avgTimeByHourResult = await prisma.$queryRaw`
+        SELECT 
+          EXTRACT(HOUR FROM o."createdAt") AS hour,
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt")))/60 AS avg_delivery_minutes,
+          AVG(EXTRACT(EPOCH FROM (t."paidAt" - t."customerSeatedAt")))/60 AS avg_payment_minutes
+        FROM "orders" o
+        JOIN "tabs" t ON t.id = o."tabId"
+        WHERE o."sentToKitchenAt" IS NOT NULL
+          AND o."deliveredAt" IS NOT NULL
+          AND t."customerSeatedAt" IS NOT NULL
+          AND t."paidAt" IS NOT NULL
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY hour
+        ORDER BY hour
+      `;
+      
+      const avgTimeByHour = (avgTimeByHourResult as any[]).map((r: any) => ({
+        hour: Number(r.hour),
+        avgDeliveryMinutes: Number(r.avg_delivery_minutes ?? 0),
+        avgPaymentMinutes: Number(r.avg_payment_minutes ?? 0)
+      }));
+
+      // === 3) EFICIÊNCIA POR MESA ===
+      
+      const tableEfficiencyResult = await prisma.$queryRaw`
+        SELECT 
+          tbl.id AS table_id,
+          tbl.number AS table_number,
+          COUNT(t.id) AS tabs_count,
+          AVG(EXTRACT(EPOCH FROM (t."closedAt" - t."createdAt")))/60 AS avg_occupied_minutes,
+          SUM(EXTRACT(EPOCH FROM (t."closedAt" - t."createdAt")))/3600 AS total_occupied_hours
+        FROM tables tbl
+        LEFT JOIN "tabs" t ON t."tableId" = tbl.id 
+          AND t.status = 'CLOSED'
+          AND t."closedAt" >= ${start}
+          AND t."closedAt" <= ${end}
+        GROUP BY tbl.id, tbl.number
+        ORDER BY tabs_count DESC
+      `;
+      
+      const tableEfficiency = (tableEfficiencyResult as any[]).map((r: any) => ({
+        tableId: r.table_id,
+        tableNumber: r.table_number,
+        tabsCount: Number(r.tabs_count ?? 0),
+        avgOccupiedMinutes: Number(r.avg_occupied_minutes ?? 0),
+        totalOccupiedHours: Number(r.total_occupied_hours ?? 0),
+        turnoverRate: Number(r.tabs_count ?? 0)
+      }));
+
+      // === 4) ALERTAS OPERACIONAIS ===
+      
+      const alerts = [];
+
+      // Alto percentual de pedidos acima do tempo esperado (>20min)
+      const slowOrdersResult = await prisma.$queryRaw`
+        SELECT COUNT(*) AS count
+        FROM "orders"
+        WHERE "sentToKitchenAt" IS NOT NULL
+          AND "deliveredAt" IS NOT NULL
+          AND EXTRACT(EPOCH FROM ("deliveredAt" - "sentToKitchenAt"))/60 > 20
+          AND "createdAt" >= ${start}
+          AND "createdAt" <= ${end}
+      `;
+      const slowOrdersCount = Number((slowOrdersResult as any[])[0]?.count ?? 0);
+      const totalOrdersWithDelivery = await prisma.order.count({
+        where: {
+          sentToKitchenAt: { not: null },
+          deliveredAt: { not: null },
+          createdAt: { gte: start, lte: end }
+        }
+      });
+      const slowOrdersPercentage = totalOrdersWithDelivery > 0 ? (slowOrdersCount / totalOrdersWithDelivery) * 100 : 0;
+
+      if (slowOrdersPercentage > 15) {
+        alerts.push({
+          type: 'SLOW_ORDERS',
+          severity: 'high',
+          message: `${slowOrdersPercentage.toFixed(1)}% dos pedidos demoraram mais de 20 minutos`,
+          value: slowOrdersPercentage,
+          count: slowOrdersCount
+        });
+      }
+
+      // Mesas com tempo excessivo sem fechamento
+      const openTabsExcessiveTimeResult = await prisma.$queryRaw`
+        SELECT 
+          t.id AS tab_id,
+          tbl.number AS table_number,
+          EXTRACT(EPOCH FROM (${now} - t."customerSeatedAt"))/60 AS minutes_open
+        FROM "tabs" t
+        JOIN tables tbl ON tbl.id = t."tableId"
+        WHERE t.status = 'OPEN'
+          AND t."customerSeatedAt" IS NOT NULL
+          AND EXTRACT(EPOCH FROM (${now} - t."customerSeatedAt"))/60 > ${avgTimeToPayment * 1.5}
+        ORDER BY minutes_open DESC
+        LIMIT 10
+      `;
+      
+      const openTabsExcessiveTime = (openTabsExcessiveTimeResult as any[]).map((r: any) => ({
+        tabId: r.tab_id,
+        tableNumber: r.table_number,
+        minutesOpen: Number(r.minutes_open ?? 0)
+      }));
+
+      if (openTabsExcessiveTime.length > 0) {
+        alerts.push({
+          type: 'EXCESSIVE_TIME',
+          severity: 'medium',
+          message: `${openTabsExcessiveTime.length} mesas abertas há mais de ${(avgTimeToPayment * 1.5).toFixed(0)} minutos`,
+          value: openTabsExcessiveTime.length,
+          tables: openTabsExcessiveTime
+        });
+      }
+
+      // Baixa rotatividade em horário de pico
+      const currentHour = now.getHours();
+      const isPeakHour = currentHour >= 12 && currentHour <= 14 || currentHour >= 19 && currentHour <= 21;
+      
+      if (isPeakHour && tableTurnoverRate < 1.5) {
+        alerts.push({
+          type: 'LOW_PEAK_TURNOVER',
+          severity: 'medium',
+          message: `Rotatividade baixa (${tableTurnoverRate.toFixed(1)}x) em horário de pico`,
+          value: tableTurnoverRate,
+          threshold: 1.5
+        });
+      }
+
+      // Concentração de pedidos em poucos garçons
+      const waiterOrderDistributionResult = await prisma.$queryRaw`
+        SELECT 
+          w.id AS waiter_id,
+          w.name AS waiter_name,
+          COUNT(DISTINCT o.id) AS orders_count
+        FROM waiters w
+        JOIN tables tbl ON tbl."waiterId" = w.id
+        JOIN "tabs" t ON t."tableId" = tbl.id
+        JOIN "orders" o ON o."tabId" = t.id
+        WHERE o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY w.id, w.name
+        ORDER BY orders_count DESC
+      `;
+      
+      const waiterOrderDistribution = (waiterOrderDistributionResult as any[]).map((r: any) => ({
+        waiterId: r.waiter_id,
+        waiterName: r.waiter_name,
+        ordersCount: Number(r.orders_count ?? 0)
+      }));
+
+      const totalOrders = waiterOrderDistribution.reduce((sum, w) => sum + w.ordersCount, 0);
+      const topWaiterPercentage = waiterOrderDistribution.length > 0 && totalOrders > 0
+        ? (waiterOrderDistribution[0].ordersCount / totalOrders) * 100
+        : 0;
+
+      if (topWaiterPercentage > 40 && waiterOrderDistribution.length > 2) {
+        alerts.push({
+          type: 'WAITER_IMBALANCE',
+          severity: 'low',
+          message: `${topWaiterPercentage.toFixed(1)}% dos pedidos concentrados em ${waiterOrderDistribution[0].waiterName}`,
+          value: topWaiterPercentage,
+          waiter: waiterOrderDistribution[0].waiterName
+        });
+      }
+
+      // === 5) ANÁLISE DE STATUS ===
+      
+      // Status dos pedidos
+      const orderStatusResult = await prisma.order.groupBy({
+        by: ['status'],
+        where: {
+          createdAt: { gte: start, lte: end }
+        },
+        _count: { status: true }
+      });
+
+      const totalOrdersForStatus = orderStatusResult.reduce((sum, r) => sum + r._count.status, 0);
+      const orderStatusDistribution = (orderStatusResult as any[]).map((r: any) => ({
+        status: r.status,
+        count: r._count.status,
+        percentage: totalOrdersForStatus > 0 ? (r._count.status / totalOrdersForStatus) * 100 : 0
+      }));
+
+      // Status das comandas
+      const tabStatusResult = await prisma.tab.groupBy({
+        by: ['status'],
+        where: {
+          createdAt: { gte: start, lte: end }
+        },
+        _count: { status: true }
+      });
+
+      const totalTabsForStatus = tabStatusResult.reduce((sum, r) => sum + r._count.status, 0);
+      const tabStatusDistribution = (tabStatusResult as any[]).map((r: any) => ({
+        status: r.status,
+        count: r._count.status,
+        percentage: totalTabsForStatus > 0 ? (r._count.status / totalTabsForStatus) * 100 : 0
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          // KPIs Operacionais
+          kpis: {
+            avgDeliveryTime,
+            avgTimeToPayment,
+            closedTabsCount,
+            throughputPerHour,
+            utilizationRate,
+            tableTurnoverRate
+          },
+          // Fluxo Operacional
+          flow: {
+            ordersByHour,
+            tabsByHour,
+            avgTimeByHour
+          },
+          // Eficiência por Mesa
+          tableEfficiency,
+          // Alertas
+          alerts,
+          // Status
+          status: {
+            orderStatusDistribution,
+            tabStatusDistribution
+          }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}

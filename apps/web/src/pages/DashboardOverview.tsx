@@ -10,6 +10,11 @@ import FinanceAlerts from '../components/dashboard/FinanceAlerts';
 import RevenueDistributionCharts from '../components/dashboard/RevenueDistributionCharts';
 import BehavioralMetrics from '../components/dashboard/BehavioralMetrics';
 import FinanceTrendComparison from '../components/dashboard/FinanceTrendComparison';
+import OperationalKPIs from '../components/dashboard/OperationalKPIs';
+import OperationalFlow from '../components/dashboard/OperationalFlow';
+import TableEfficiency from '../components/dashboard/TableEfficiency';
+import OperationalAlerts from '../components/dashboard/OperationalAlerts';
+import OperationalStatus from '../components/dashboard/OperationalStatus';
 import useOverviewHook from '../hooks/useOverview';
 import { useDashboard } from '../hooks/useDashboard';
 import { FaDollarSign, FaUtensils, FaUserTie, FaCog, FaFire } from 'react-icons/fa';
@@ -20,13 +25,13 @@ function toISO(d: Date) {
 }
 
 export default function DashboardOverview() {
-  const { useOverviewData, useOverviewWaiters, useOverviewFinance, useRevenue } = useOverviewHook();
+  const { useOverviewData, useOverviewWaiters, useOverviewFinance, useOverviewOperations, useRevenue } = useOverviewHook();
   const { useStats } = useDashboard();
 
   const [preset, setPreset] = useState<'today' | '7d' | '30d' | 'custom'>('today');
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
-  const [activeSection, setActiveSection] = useState<'finance' | 'waiters'>('finance');
+  const [activeSection, setActiveSection] = useState<'finance' | 'waiters' | 'operations'>('finance');
 
   const { start, end } = useMemo(() => {
     const now = new Date();
@@ -44,17 +49,19 @@ export default function DashboardOverview() {
   const overviewQ = useOverviewData({ start, end });
   const financeQ = useOverviewFinance({ start, end });
   const waitersQ = useOverviewWaiters({ start, end });
+  const operationsQ = useOverviewOperations({ start, end });
   const revenueQ = useRevenue({ start, end, groupBy: 'day' });
   const statsQ = useStats();
 
   // If any query errored, surface the error to the user
-  if (overviewQ.isError || revenueQ.isError || statsQ.isError || waitersQ.isError || financeQ.isError) {
+  if (overviewQ.isError || revenueQ.isError || statsQ.isError || waitersQ.isError || financeQ.isError || operationsQ.isError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar Visão Geral</h2>
         {financeQ.isError && <div className="text-red-600 mb-1">Finanças: {(financeQ.error as any)?.message ?? String(financeQ.error)}</div>}
         {overviewQ.isError && <div className="text-red-600 mb-1">Overview: {(overviewQ.error as any)?.message ?? String(overviewQ.error)}</div>}
         {waitersQ.isError && <div className="text-red-600 mb-1">Garçons: {(waitersQ.error as any)?.message ?? String(waitersQ.error)}</div>}
+        {operationsQ.isError && <div className="text-red-600 mb-1">Operacional: {(operationsQ.error as any)?.message ?? String(operationsQ.error)}</div>}
         {revenueQ.isError && <div className="text-red-600 mb-1">Receita: {(revenueQ.error as any)?.message ?? String(revenueQ.error)}</div>}
         {statsQ.isError && <div className="text-red-600 mb-1">Stats: {(statsQ.error as any)?.message ?? String(statsQ.error)}</div>}
         <div className="mt-3 text-sm text-red-700">Verifique a API ou suas permissões de administrador.</div>
@@ -62,7 +69,7 @@ export default function DashboardOverview() {
     );
   }
 
-  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading || financeQ.isLoading;
+  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading || financeQ.isLoading || operationsQ.isLoading;
 
   const kpis = [] as { label: string; value: string | number; sub?: string }[];
 
@@ -142,6 +149,16 @@ export default function DashboardOverview() {
             }`}
           >
             👔 Garçons
+          </button>
+          <button
+            onClick={() => setActiveSection('operations')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeSection === 'operations'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            ⚙️ Operacional
           </button>
         </div>
       </div>
@@ -246,6 +263,56 @@ export default function DashboardOverview() {
                     tabsDistribution={waitersQ.data.distribution.tabsDistribution}
                     avgTimeByWaiter={waitersQ.data.distribution.avgTimeByWaiter}
                     waiterHistory={waitersQ.data.distribution.waiterHistory}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* SEÇÃO OPERACIONAL */}
+          {activeSection === 'operations' && operationsQ.data && (
+            <>
+              {/* 1️⃣ KPIs OPERACIONAIS */}
+              <div className="mb-8">
+                <OperationalKPIs
+                  avgDeliveryTime={operationsQ.data.kpis.avgDeliveryTime}
+                  avgTimeToPayment={operationsQ.data.kpis.avgTimeToPayment}
+                  closedTabsCount={operationsQ.data.kpis.closedTabsCount}
+                  throughputPerHour={operationsQ.data.kpis.throughputPerHour}
+                  utilizationRate={operationsQ.data.kpis.utilizationRate}
+                  tableTurnoverRate={operationsQ.data.kpis.tableTurnoverRate}
+                />
+              </div>
+
+              {/* 4️⃣ ALERTAS OPERACIONAIS */}
+              {operationsQ.data.alerts && (
+                <div className="mb-8">
+                  <OperationalAlerts alerts={operationsQ.data.alerts} />
+                </div>
+              )}
+
+              {/* 2️⃣ FLUXO OPERACIONAL */}
+              {operationsQ.data.flow && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">📊 Fluxo Operacional</h2>
+                  <OperationalFlow flow={operationsQ.data.flow} />
+                </div>
+              )}
+
+              {/* 3️⃣ EFICIÊNCIA POR MESA */}
+              {operationsQ.data.tableEfficiency && (
+                <div className="mb-8">
+                  <TableEfficiency data={operationsQ.data.tableEfficiency} />
+                </div>
+              )}
+
+              {/* 5️⃣ ANÁLISE DE STATUS */}
+              {operationsQ.data.status && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">📈 Análise de Status</h2>
+                  <OperationalStatus
+                    orderStatusDistribution={operationsQ.data.status.orderStatusDistribution}
+                    tabStatusDistribution={operationsQ.data.status.tabStatusDistribution}
                   />
                 </div>
               )}

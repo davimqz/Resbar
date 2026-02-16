@@ -5,6 +5,11 @@ import WaiterRankingTable from '../components/dashboard/WaiterRankingTable';
 import AlertsList from '../components/dashboard/AlertsList';
 import PeriodComparison from '../components/dashboard/PeriodComparison';
 import DistributionPanel from '../components/dashboard/DistributionPanel';
+import FinanceKPIs from '../components/dashboard/FinanceKPIs';
+import FinanceAlerts from '../components/dashboard/FinanceAlerts';
+import RevenueDistributionCharts from '../components/dashboard/RevenueDistributionCharts';
+import BehavioralMetrics from '../components/dashboard/BehavioralMetrics';
+import FinanceTrendComparison from '../components/dashboard/FinanceTrendComparison';
 import useOverviewHook from '../hooks/useOverview';
 import { useDashboard } from '../hooks/useDashboard';
 import { FaDollarSign, FaUtensils, FaUserTie, FaCog, FaFire } from 'react-icons/fa';
@@ -15,12 +20,13 @@ function toISO(d: Date) {
 }
 
 export default function DashboardOverview() {
-  const { useOverviewData, useOverviewWaiters, useRevenue } = useOverviewHook();
+  const { useOverviewData, useOverviewWaiters, useOverviewFinance, useRevenue } = useOverviewHook();
   const { useStats } = useDashboard();
 
   const [preset, setPreset] = useState<'today' | '7d' | '30d' | 'custom'>('today');
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
+  const [activeSection, setActiveSection] = useState<'finance' | 'waiters'>('finance');
 
   const { start, end } = useMemo(() => {
     const now = new Date();
@@ -36,15 +42,17 @@ export default function DashboardOverview() {
   }, [preset, customStart, customEnd]);
 
   const overviewQ = useOverviewData({ start, end });
+  const financeQ = useOverviewFinance({ start, end });
   const waitersQ = useOverviewWaiters({ start, end });
   const revenueQ = useRevenue({ start, end, groupBy: 'day' });
   const statsQ = useStats();
 
   // If any query errored, surface the error to the user
-  if (overviewQ.isError || revenueQ.isError || statsQ.isError || waitersQ.isError) {
+  if (overviewQ.isError || revenueQ.isError || statsQ.isError || waitersQ.isError || financeQ.isError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar Visão Geral</h2>
+        {financeQ.isError && <div className="text-red-600 mb-1">Finanças: {(financeQ.error as any)?.message ?? String(financeQ.error)}</div>}
         {overviewQ.isError && <div className="text-red-600 mb-1">Overview: {(overviewQ.error as any)?.message ?? String(overviewQ.error)}</div>}
         {waitersQ.isError && <div className="text-red-600 mb-1">Garçons: {(waitersQ.error as any)?.message ?? String(waitersQ.error)}</div>}
         {revenueQ.isError && <div className="text-red-600 mb-1">Receita: {(revenueQ.error as any)?.message ?? String(revenueQ.error)}</div>}
@@ -54,7 +62,7 @@ export default function DashboardOverview() {
     );
   }
 
-  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading;
+  const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading || financeQ.isLoading;
 
   const kpis = [] as { label: string; value: string | number; sub?: string }[];
 
@@ -93,8 +101,8 @@ export default function DashboardOverview() {
       {/* Header com filtros */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Visão Geral - Performance de Garçons</h1>
-          <p className="text-sm text-gray-500">Métricas focadas em desempenho e eficiência do time</p>
+          <h1 className="text-xl font-semibold">Executiva</h1>
+          <p className="text-sm text-gray-500">Métricas consolidadas e análise de desempenho</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -112,6 +120,32 @@ export default function DashboardOverview() {
         </div>
       )}
 
+      {/* Tabs de Seleção */}
+      <div className="mb-6 border-b border-gray-200">
+        <div className="flex gap-4">
+          <button
+            onClick={() => setActiveSection('finance')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeSection === 'finance'
+                ? 'border-green-600 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            💰 Financeiro
+          </button>
+          <button
+            onClick={() => setActiveSection('waiters')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeSection === 'waiters'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            👔 Garçons
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -119,42 +153,103 @@ export default function DashboardOverview() {
         </div>
       ) : (
         <>
-          {/* 1️⃣ KPIs EXECUTIVOS */}
-          <div>
-            <KPICards items={kpis} />
-          </div>
+          {/* SEÇÃO FINANCEIRO */}
+          {activeSection === 'finance' && financeQ.data && (
+            <>
+              {/* 1️⃣ KPIs EXECUTIVOS FINANCEIROS */}
+              <div className="mb-8">
+                <FinanceKPIs
+                  totalRevenue={financeQ.data.kpis.totalRevenue}
+                  avgTicket={financeQ.data.kpis.avgTicket}
+                  paidTabsCount={financeQ.data.kpis.paidTabsCount}
+                  totalServiceCharge={financeQ.data.kpis.totalServiceCharge}
+                  revenueByPayment={financeQ.data.kpis.revenueByPayment}
+                />
+              </div>
 
-          {/* 5️⃣ COMPARAÇÃO COM PERÍODO ANTERIOR */}
-          {waitersQ.data?.comparison && (
-            <PeriodComparison data={waitersQ.data.comparison} />
+              {/* 5️⃣ TENDÊNCIAS FINANCEIRAS */}
+              {financeQ.data.comparison && (
+                <div className="mb-8">
+                  <FinanceTrendComparison data={financeQ.data.comparison} />
+                </div>
+              )}
+
+              {/* 4️⃣ ALERTAS FINANCEIROS */}
+              {financeQ.data.alerts && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">🚨 Alertas Financeiros</h2>
+                  <FinanceAlerts alerts={financeQ.data.alerts} />
+                </div>
+              )}
+
+              {/* 2️⃣ DISTRIBUIÇÕES FINANCEIRAS */}
+              {financeQ.data.distributions && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">📊 Distribuições de Receita</h2>
+                  <RevenueDistributionCharts
+                    revenueByDay={financeQ.data.distributions.revenueByDay}
+                    revenueByShift={financeQ.data.distributions.revenueByShift}
+                    revenueByWaiter={financeQ.data.distributions.revenueByWaiter}
+                  />
+                </div>
+              )}
+
+              {/* 3️⃣ INDICADORES COMPORTAMENTAIS */}
+              {financeQ.data.behavioral && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold mb-4">📈 Indicadores Comportamentais</h2>
+                  <BehavioralMetrics
+                    avgTimeToPayment={financeQ.data.behavioral.avgTimeToPayment}
+                    tabTypeDistribution={financeQ.data.behavioral.tabTypeDistribution}
+                    avgItemPrice={financeQ.data.behavioral.avgItemPrice}
+                    avgQuantity={financeQ.data.behavioral.avgQuantity}
+                  />
+                </div>
+              )}
+            </>
           )}
 
-          {/* 4️⃣ ALERTAS INTELIGENTES */}
-          {waitersQ.data?.alerts && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">🚨 Alertas Inteligentes</h2>
-              <AlertsList alerts={waitersQ.data.alerts} />
-            </div>
-          )}
+          {/* SEÇÃO GARÇONS */}
+          {activeSection === 'waiters' && waitersQ.data && (
+            <>
+              {/* 1️⃣ KPIs EXECUTIVOS */}
+              <div>
+                <KPICards items={kpis} />
+              </div>
 
-          {/* 2️⃣ RANKING DE GARÇONS */}
-          {waitersQ.data?.waiterRanking && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">📊 Ranking de Garçons</h2>
-              <WaiterRankingTable data={waitersQ.data.waiterRanking} />
-            </div>
-          )}
+              {/* 5️⃣ COMPARAÇÃO COM PERÍODO ANTERIOR */}
+              {waitersQ.data?.comparison && (
+                <PeriodComparison data={waitersQ.data.comparison} />
+              )}
 
-          {/* 3️⃣ DISTRIBUIÇÃO E EQUILÍBRIO */}
-          {waitersQ.data?.distribution && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">📈 Distribuição e Equilíbrio</h2>
-              <DistributionPanel 
-                tabsDistribution={waitersQ.data.distribution.tabsDistribution}
-                avgTimeByWaiter={waitersQ.data.distribution.avgTimeByWaiter}
-                waiterHistory={waitersQ.data.distribution.waiterHistory}
-              />
-            </div>
+              {/* 4️⃣ ALERTAS INTELIGENTES */}
+              {waitersQ.data?.alerts && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">🚨 Alertas Inteligentes</h2>
+                  <AlertsList alerts={waitersQ.data.alerts} />
+                </div>
+              )}
+
+              {/* 2️⃣ RANKING DE GARÇONS */}
+              {waitersQ.data?.waiterRanking && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">📊 Ranking de Garçons</h2>
+                  <WaiterRankingTable data={waitersQ.data.waiterRanking} />
+                </div>
+              )}
+
+              {/* 3️⃣ DISTRIBUIÇÃO E EQUILÍBRIO */}
+              {waitersQ.data?.distribution && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">📈 Distribuição e Equilíbrio</h2>
+                  <DistributionPanel 
+                    tabsDistribution={waitersQ.data.distribution.tabsDistribution}
+                    avgTimeByWaiter={waitersQ.data.distribution.avgTimeByWaiter}
+                    waiterHistory={waitersQ.data.distribution.waiterHistory}
+                  />
+                </div>
+              )}
+            </>
           )}
 
           {/* Evolução da Receita */}

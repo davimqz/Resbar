@@ -10,6 +10,7 @@ const controller = new DashboardController();
 router.get('/stats', authenticateToken, requireAdmin, controller.getStats);
 router.get('/overview', authenticateToken, requireAdmin, controller.getOverview.bind(controller));
 router.get('/overview-waiters', authenticateToken, requireAdmin, controller.getOverviewWaiters.bind(controller));
+router.get('/overview-finance', authenticateToken, requireAdmin, controller.getOverviewFinance.bind(controller));
 router.get('/finance/summary', authenticateToken, requireAdmin, controller.getFinanceSummary.bind(controller));
 router.get('/operational-metrics', authenticateToken, requireAdmin, controller.getOperationalMetrics.bind(controller));
 

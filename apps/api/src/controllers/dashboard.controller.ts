@@ -723,4 +723,364 @@ export class DashboardController {
       next(error);
     }
   }
-}
+  
+  // GET /api/dashboard/overview-finance?start=...&end=...
+  // Dashboard Visão Geral focado em métricas financeiras
+  async getOverviewFinance(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { start: startQ, end: endQ } = req.query as Record<string, string>;
+      const now = new Date();
+      const start = startQ ? new Date(startQ) : (() => { const d = new Date(now); d.setHours(0,0,0,0); return d; })();
+      const end = endQ ? new Date(endQ) : now;
+
+      // === 1) KPIs EXECUTIVOS ===
+      
+      // Receita total no período
+      const totalRevenueResult = await prisma.$queryRaw`
+        SELECT ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+      const totalRevenue = Number((totalRevenueResult as any[])[0]?.revenue ?? 0);
+
+      // Ticket médio
+      const ticketResult = await prisma.$queryRaw`
+        SELECT 
+          AVG(COALESCE("paidAmount", total))::double precision AS avg_ticket,
+          COUNT(*) AS tabs_count
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+      const avgTicket = Number((ticketResult as any[])[0]?.avg_ticket ?? 0);
+      const paidTabsCount = Number((ticketResult as any[])[0]?.tabs_count ?? 0);
+
+      // Receita por método de pagamento
+      const revenueByPaymentResult = await prisma.$queryRaw`
+        SELECT 
+          "paymentMethod",
+          ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue,
+          COUNT(*) AS count
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+          AND "paymentMethod" IS NOT NULL
+        GROUP BY "paymentMethod"
+        ORDER BY revenue DESC
+      `;
+      
+      const revenueByPayment = (revenueByPaymentResult as any[]).map((r: any) => ({
+        method: r.paymentMethod,
+        revenue: Number(r.revenue ?? 0),
+        count: Number(r.count ?? 0),
+        percentage: totalRevenue > 0 ? (Number(r.revenue ?? 0) / totalRevenue) * 100 : 0
+      }));
+
+      // Total de taxa de serviço arrecadada
+      const serviceChargeResult = await prisma.$queryRaw`
+        SELECT ROUND(SUM(COALESCE("serviceChargeAmount", 0))::numeric, 2)::double precision AS total_service_charge
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+      const totalServiceCharge = Number((serviceChargeResult as any[])[0]?.total_service_charge ?? 0);
+
+      // === 2) DISTRIBUIÇÕES FINANCEIRAS ===
+      
+      // Receita por dia
+      const revenueByDayResult = await prisma.$queryRaw`
+        SELECT 
+          date_trunc('day', "paidAt")::date AS day,
+          ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue,
+          COUNT(*) AS tabs_count
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+        GROUP BY day
+        ORDER BY day
+      `;
+      
+      const revenueByDay = (revenueByDayResult as any[]).map((r: any) => ({
+        day: r.day,
+        revenue: Number(r.revenue ?? 0),
+        tabsCount: Number(r.tabs_count ?? 0)
+      }));
+
+      // Receita por turno (aproximação usando hora do dia)
+      const revenueByHourResult = await prisma.$queryRaw`
+        SELECT 
+          EXTRACT(HOUR FROM "paidAt") AS hour,
+          ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue,
+          COUNT(*) AS tabs_count
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+        GROUP BY hour
+        ORDER BY hour
+      `;
+      
+      const revenueByHour = (revenueByHourResult as any[]).map((r: any) => {
+        const hour = Number(r.hour);
+        let shift = 'Madrugada';
+        if (hour >= 6 && hour < 12) shift = 'Manhã';
+        else if (hour >= 12 && hour < 18) shift = 'Tarde';
+        else if (hour >= 18 && hour < 24) shift = 'Noite';
+        
+        return {
+          hour,
+          shift,
+          revenue: Number(r.revenue ?? 0),
+          tabsCount: Number(r.tabs_count ?? 0)
+        };
+      });
+
+      // Agrupar por turno
+      const revenueByShift = revenueByHour.reduce((acc: any[], curr) => {
+        const existing = acc.find(s => s.shift === curr.shift);
+        if (existing) {
+          existing.revenue += curr.revenue;
+          existing.tabsCount += curr.tabsCount;
+        } else {
+          acc.push({ shift: curr.shift, revenue: curr.revenue, tabsCount: curr.tabsCount });
+        }
+        return acc;
+      }, []);
+
+      // Receita por garçom
+      const revenueByWaiterResult = await prisma.$queryRaw`
+        SELECT 
+          w.id AS waiter_id,
+          w.name AS waiter_name,
+          ROUND(SUM(COALESCE(t."paidAmount", t.total))::numeric, 2)::double precision AS revenue,
+          COUNT(DISTINCT t.id) AS tabs_count
+        FROM tab_waiter_history h
+        JOIN waiters w ON w.id = h."waiterId"
+        JOIN "tabs" t ON t.id = h."tabId"
+        WHERE t."paidAt" IS NOT NULL
+          AND t."paidAt" >= ${start}
+          AND t."paidAt" <= ${end}
+          AND (h."removedAt" IS NULL OR h."removedAt" > t."paidAt")
+        GROUP BY w.id, w.name
+        ORDER BY revenue DESC
+        LIMIT 10
+      `;
+      
+      const revenueByWaiter = (revenueByWaiterResult as any[]).map((r: any) => ({
+        waiterId: r.waiter_id,
+        waiterName: r.waiter_name,
+        revenue: Number(r.revenue ?? 0),
+        tabsCount: Number(r.tabs_count ?? 0),
+        percentage: totalRevenue > 0 ? (Number(r.revenue ?? 0) / totalRevenue) * 100 : 0
+      }));
+
+      // === 3) INDICADORES COMPORTAMENTAIS ===
+      
+      // Tempo médio até pagamento
+      const avgTimeToPaymentResult = await prisma.$queryRaw`
+        SELECT AVG(EXTRACT(EPOCH FROM ("paidAt" - "customerSeatedAt")))/60 AS avg_minutes
+        FROM "tabs"
+        WHERE "customerSeatedAt" IS NOT NULL
+          AND "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+      `;
+      const avgTimeToPayment = Number((avgTimeToPaymentResult as any[])[0]?.avg_minutes ?? 0);
+
+      // Comandas unificadas vs individuais
+      const tabTypeDistributionResult = await prisma.$queryRaw`
+        SELECT 
+          CASE WHEN "isUnifiedTab" = true THEN 'Unificada' ELSE 'Individual' END AS tab_type,
+          COUNT(*) AS count,
+          ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+        GROUP BY "isUnifiedTab"
+      `;
+      
+      const tabTypeDistribution = (tabTypeDistributionResult as any[]).map((r: any) => ({
+        type: r.tab_type,
+        count: Number(r.count ?? 0),
+        revenue: Number(r.revenue ?? 0),
+        percentage: paidTabsCount > 0 ? (Number(r.count ?? 0) / paidTabsCount) * 100 : 0
+      }));
+
+      // Valor médio por item na comanda
+      const avgItemValueResult = await prisma.$queryRaw`
+        SELECT 
+          AVG(o."unitPrice")::double precision AS avg_item_price,
+          AVG(o."quantity")::double precision AS avg_quantity
+        FROM "orders" o
+        JOIN "tabs" t ON t.id = o."tabId"
+        WHERE t."paidAt" IS NOT NULL
+          AND t."paidAt" >= ${start}
+          AND t."paidAt" <= ${end}
+      `;
+      const avgItemPrice = Number((avgItemValueResult as any[])[0]?.avg_item_price ?? 0);
+      const avgQuantity = Number((avgItemValueResult as any[])[0]?.avg_quantity ?? 0);
+
+      // === 4) ALERTAS FINANCEIROS ===
+      
+      const periodDuration = end.getTime() - start.getTime();
+      const previousStart = new Date(start.getTime() - periodDuration);
+      const previousEnd = new Date(start.getTime());
+
+      // Receita período anterior
+      const previousRevenueResult = await prisma.$queryRaw`
+        SELECT ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${previousStart}
+          AND "paidAt" < ${previousEnd}
+      `;
+      const previousRevenue = Number((previousRevenueResult as any[])[0]?.revenue ?? 0);
+
+      // Ticket médio período anterior
+      const previousTicketResult = await prisma.$queryRaw`
+        SELECT AVG(COALESCE("paidAmount", total))::double precision AS avg_ticket
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${previousStart}
+          AND "paidAt" < ${previousEnd}
+      `;
+      const previousAvgTicket = Number((previousTicketResult as any[])[0]?.avg_ticket ?? 0);
+
+      // Volume período anterior
+      const previousTabsCount = await prisma.tab.count({
+        where: {
+          paidAt: { gte: previousStart, lt: previousEnd }
+        }
+      });
+
+      const alerts = [];
+
+      // Alerta: Queda de receita
+      if (previousRevenue > 0) {
+        const revenueChange = ((totalRevenue - previousRevenue) / previousRevenue) * 100;
+        if (revenueChange < -10) {
+          alerts.push({
+            type: 'REVENUE_DROP',
+            severity: 'high',
+            message: `Receita caiu ${Math.abs(revenueChange).toFixed(1)}% em relação ao período anterior`,
+            value: totalRevenue,
+            previous: previousRevenue,
+            change: revenueChange
+          });
+        }
+      }
+
+      // Alerta: Queda de ticket médio
+      if (previousAvgTicket > 0) {
+        const ticketChange = ((avgTicket - previousAvgTicket) / previousAvgTicket) * 100;
+        if (ticketChange < -10) {
+          alerts.push({
+            type: 'TICKET_DROP',
+            severity: 'medium',
+            message: `Ticket médio caiu ${Math.abs(ticketChange).toFixed(1)}% em relação ao período anterior`,
+            value: avgTicket,
+            previous: previousAvgTicket,
+            change: ticketChange
+          });
+        }
+      }
+
+      // Alerta: Alta dependência de método de pagamento
+      const maxPaymentPercentage = Math.max(...revenueByPayment.map(p => p.percentage));
+      if (maxPaymentPercentage > 70) {
+        const dominantMethod = revenueByPayment.find(p => p.percentage === maxPaymentPercentage);
+        alerts.push({
+          type: 'PAYMENT_DEPENDENCY',
+          severity: 'low',
+          message: `${maxPaymentPercentage.toFixed(1)}% da receita depende de ${dominantMethod?.method}`,
+          value: maxPaymentPercentage,
+          method: dominantMethod?.method
+        });
+      }
+
+      // Alerta: Comandas com valor pago diferente do total
+      const discrepancyResult = await prisma.$queryRaw`
+        SELECT COUNT(*) AS count
+        FROM "tabs"
+        WHERE "paidAt" IS NOT NULL
+          AND "paidAt" >= ${start}
+          AND "paidAt" <= ${end}
+          AND "paidAmount" IS NOT NULL
+          AND ABS("paidAmount" - total) > 0.01
+      `;
+      const discrepancyCount = Number((discrepancyResult as any[])[0]?.count ?? 0);
+      
+      if (discrepancyCount > 0) {
+        const discrepancyPercentage = (discrepancyCount / paidTabsCount) * 100;
+        if (discrepancyPercentage > 5) {
+          alerts.push({
+            type: 'PAYMENT_DISCREPANCY',
+            severity: 'high',
+            message: `${discrepancyCount} comandas (${discrepancyPercentage.toFixed(1)}%) com divergência entre valor pago e total`,
+            value: discrepancyCount,
+            percentage: discrepancyPercentage
+          });
+        }
+      }
+
+      // === 5) TENDÊNCIAS ===
+      
+      const comparison = {
+        revenue: {
+          current: totalRevenue,
+          previous: previousRevenue,
+          change: previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0
+        },
+        avgTicket: {
+          current: avgTicket,
+          previous: previousAvgTicket,
+          change: previousAvgTicket > 0 ? ((avgTicket - previousAvgTicket) / previousAvgTicket) * 100 : 0
+        },
+        tabsCount: {
+          current: paidTabsCount,
+          previous: previousTabsCount,
+          change: previousTabsCount > 0 ? ((paidTabsCount - previousTabsCount) / previousTabsCount) * 100 : 0
+        }
+      };
+
+      res.json({
+        success: true,
+        data: {
+          // KPIs Executivos
+          kpis: {
+            totalRevenue,
+            avgTicket,
+            paidTabsCount,
+            totalServiceCharge,
+            revenueByPayment
+          },
+          // Distribuições
+          distributions: {
+            revenueByDay,
+            revenueByShift,
+            revenueByWaiter
+          },
+          // Indicadores Comportamentais
+          behavioral: {
+            avgTimeToPayment,
+            tabTypeDistribution,
+            avgItemPrice,
+            avgQuantity
+          },
+          // Alertas
+          alerts,
+          // Tendências
+          comparison
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }}

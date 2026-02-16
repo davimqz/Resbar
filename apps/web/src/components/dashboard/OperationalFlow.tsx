@@ -1,5 +1,4 @@
 import BarChart from './BarChart';
-import TimeSeriesChart from './TimeSeriesChart';
 
 interface FlowData {
   ordersByHour: Array<{ hour: number; count: number }>;
@@ -41,7 +40,7 @@ export default function OperationalFlow({ flow }: OperationalFlowProps) {
           <h3 className="text-lg font-semibold mb-4">📈 Pedidos por Hora</h3>
           {ordersData.length > 0 ? (
             <>
-              <BarChart data={ordersData} color="#3b82f6" />
+              <BarChart data={ordersData} dataKey="value" xKey="label" color="#3b82f6" />
               {peakHours.length > 0 && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
@@ -59,7 +58,7 @@ export default function OperationalFlow({ flow }: OperationalFlowProps) {
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
           <h3 className="text-lg font-semibold mb-4">🧾 Comandas por Hora</h3>
           {tabsData.length > 0 ? (
-            <BarChart data={tabsData} color="#10b981" />
+            <BarChart data={tabsData} dataKey="value" xKey="label" color="#10b981" />
           ) : (
             <div className="text-center py-8 text-gray-400">Sem dados de comandas</div>
           )}

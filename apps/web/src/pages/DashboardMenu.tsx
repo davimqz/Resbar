@@ -1,15 +1,52 @@
-import useMetrics from '../hooks/useMetrics';
-import BarChart from '../components/dashboard/BarChart';
-import formatCurrency from '../lib/formatCurrency';
-import { GiKnifeFork, GiTrophy } from 'react-icons/gi';
-import { FiPackage } from 'react-icons/fi';
-import { FaDollarSign, FaBullseye, FaMedal, FaLightbulb } from 'react-icons/fa';
+import { useState, useMemo } from 'react';
+import { useOverview as useOverviewHook } from '../hooks/useOverview';
+import MenuKPIs from '../components/dashboard/MenuKPIs';
+import MenuAlerts from '../components/dashboard/MenuAlerts';
+import MenuTopItems from '../components/dashboard/MenuTopItems';
+import MenuStrategicMatrix from '../components/dashboard/MenuStrategicMatrix';
+import MenuPerformance from '../components/dashboard/MenuPerformance';
+import MenuOperationalImpact from '../components/dashboard/MenuOperationalImpact';
+
+type Period = 'today' | '7d' | '30d';
+
+function toISO(date: Date) {
+  return date.toISOString();
+}
 
 export default function DashboardMenu() {
-  const { useTopMenuItems } = useMetrics();
-  const { data, isLoading } = useTopMenuItems({ limit: 20 });
+  const [period, setPeriod] = useState<Period>('today');
+  const { useOverviewMenu } = useOverviewHook();
 
-  if (isLoading) {
+  const { start, end } = useMemo(() => {
+    const now = new Date();
+    const startToday = new Date(now);
+    startToday.setHours(0, 0, 0, 0);
+    const start7 = new Date(now);
+    start7.setDate(start7.getDate() - 6);
+    start7.setHours(0, 0, 0, 0);
+    const start30 = new Date(now);
+    start30.setDate(start30.getDate() - 29);
+    start30.setHours(0, 0, 0, 0);
+
+    if (period === 'today') return { start: toISO(startToday), end: toISO(now) };
+    if (period === '7d') return { start: toISO(start7), end: toISO(now) };
+    if (period === '30d') return { start: toISO(start30), end: toISO(now) };
+    return { start: toISO(startToday), end: toISO(now) };
+  }, [period]);
+
+  const menuQ = useOverviewMenu({ start, end });
+
+  if (menuQ.isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h2 className="text-xl font-semibold text-red-800 mb-2">Erro ao carregar Análise do Cardápio</h2>
+        <div className="text-red-600 mb-1">{(menuQ.error as any)?.message ?? String(menuQ.error)}</div>
+        <div className="mt-3 text-sm text-red-700">Verifique a API ou suas permissões de administrador.</div>
+      </div>
+    );
+  }
+
+  if (menuQ.isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -20,204 +57,113 @@ export default function DashboardMenu() {
     );
   }
 
-  // Calcular KPIs gerais
-  const totalItems = Array.isArray(data) ? data.length : 0;
-  const totalQuantity = Array.isArray(data) ? data.reduce((sum, i) => sum + Number(i.qty || 0), 0) : 0;
-  const totalRevenue = Array.isArray(data) ? data.reduce((sum, i) => sum + Number(i.revenue || 0), 0) : 0;
-  const avgPricePerItem = totalQuantity > 0 ? totalRevenue / totalQuantity : 0;
-  
-  // Top 3 performers
-  const top3 = Array.isArray(data) ? data.slice(0, 3) : [];
-  
-  // Preparar dados para gráfico (top 10)
-  const chartData = Array.isArray(data) 
-    ? data.slice(0, 10).map((i: any) => ({
-        name: i.name.length > 15 ? i.name.substring(0, 15) + '...' : i.name,
-        quantidade: Number(i.qty || 0),
-        receita: Number(i.revenue || 0)
-      }))
-    : [];
+  const data = menuQ.data!;
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Cardápio</h1>
-        <p className="text-gray-500 mt-1">Performance dos itens e análise de vendas</p>
-      </div>
-
-      {/* KPIs Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-500 text-sm font-medium">Itens no Ranking</h3>
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <GiKnifeFork className="w-5 h-5 text-gray-700" />
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-purple-600">{totalItems}</p>
-          <p className="text-sm text-gray-500 mt-2">Itens com vendas</p>
+    <div className="p-4 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">🍽 Análise do Cardápio</h1>
+          <p className="text-gray-500 mt-1">Performance de itens, receita e impacto operacional</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-500 text-sm font-medium">Unidades Vendidas</h3>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FiPackage className="w-5 h-5 text-gray-700" />
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-blue-600">{totalQuantity}</p>
-          <p className="text-sm text-gray-500 mt-2">Total do período</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-500 text-sm font-medium">Receita Total</h3>
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <FaDollarSign className="w-5 h-5 text-gray-700" />
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-green-600">{formatCurrency(totalRevenue)}</p>
-          <p className="text-sm text-gray-500 mt-2">Gerada pelo cardápio</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-500 text-sm font-medium">Ticket Médio/Item</h3>
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <FaBullseye className="w-5 h-5 text-gray-700" />
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-orange-600">{formatCurrency(avgPricePerItem)}</p>
-          <p className="text-sm text-gray-500 mt-2">Preço médio realizado</p>
+        {/* Filtros de período */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPeriod('today')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              period === 'today' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Hoje
+          </button>
+          <button
+            onClick={() => setPeriod('7d')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              period === '7d' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            7 Dias
+          </button>
+          <button
+            onClick={() => setPeriod('30d')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              period === '30d' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            30 Dias
+          </button>
         </div>
       </div>
 
-      {/* Top 3 Destaques */}
-      {top3.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-4"><GiTrophy className="inline-block mr-2 w-5 h-5 text-yellow-500" />Top 3 Itens Mais Vendidos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {top3.map((item: any, idx: number) => (
-              <div
-                key={item.menu_item_id}
-                className={`rounded-xl shadow-sm border p-6 hover:shadow-lg transition-all ${
-                  idx === 0 ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200' :
-                  idx === 1 ? 'bg-gradient-to-br from-gray-50 to-slate-100 border-gray-200' :
-                  'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                    idx === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' :
-                    idx === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500' :
-                    'bg-gradient-to-br from-orange-400 to-amber-500'
-                  }`}>
-                    {idx + 1}
-                  </div>
-                  <span className="text-3xl">
-                    {idx === 0 ? <FaMedal className="text-yellow-400" /> : idx === 1 ? <FaMedal className="text-slate-400" /> : <FaMedal className="text-orange-400" />}
-                  </span>
-                </div>
-                <h3 className="font-bold text-lg text-gray-900 mb-2">{item.name}</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Quantidade:</span>
-                    <span className="font-semibold text-blue-600">{item.qty} un</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Receita:</span>
-                    <span className="font-semibold text-green-600">{formatCurrency(Number(item.revenue || 0))}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* 1️⃣ KPIs DO CARDÁPIO */}
+      <div className="mb-8">
+        <MenuKPIs
+          totalRevenue={data.kpis.totalRevenue}
+          totalItems={data.kpis.totalItems}
+          unavailableCount={data.kpis.unavailableCount}
+          avgPrepTime={data.kpis.avgPrepTime}
+          concentrationRatio={data.kpis.concentrationRatio}
+        />
+      </div>
+
+      {/* 2️⃣ ALERTAS DO CARDÁPIO */}
+      {data.alerts && data.alerts.length > 0 && (
+        <div className="mb-8">
+          <MenuAlerts alerts={data.alerts} />
         </div>
       )}
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Gráfico de Quantidade */}
-        {chartData.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold mb-4">Top 10 por Quantidade</h2>
-            <BarChart 
-              data={chartData} 
-              dataKey="quantidade" 
-              xKey="name" 
-              title=""
-              color="#3B82F6"
-            />
-          </div>
-        )}
+      {/* 3️⃣ TOP ITENS E RECEITA POR CATEGORIA */}
+      {data.topItems && data.categoryDistribution && (
+        <div className="mb-8">
+          <MenuTopItems
+            byVolume={data.topItems.byVolume}
+            byRevenue={data.topItems.byRevenue}
+            categoryDistribution={data.categoryDistribution}
+          />
+        </div>
+      )}
 
-        {/* Gráfico de Receita */}
-        {chartData.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold mb-4">Top 10 por Receita ($)</h2>
-            <BarChart 
-              data={chartData} 
-              dataKey="receita" 
-              xKey="name" 
-              title=""
-              color="#10B981"
-            />
-          </div>
-        )}
-      </div>
+      {/* 4️⃣ ANÁLISE ESTRATÉGICA */}
+      {data.strategicMatrix && data.bottlenecks && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">📊 Análise Estratégica</h2>
+          <MenuStrategicMatrix
+            strategicMatrix={data.strategicMatrix}
+            bottlenecks={data.bottlenecks}
+          />
+        </div>
+      )}
 
-      {/* Tabela Completa */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-lg font-semibold mb-4">Ranking Completo dos Itens</h2>
-        {Array.isArray(data) && data.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Posição</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Item</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Quantidade</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Receita</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Ticket Médio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((i: any, idx: number) => {
-                  const ticketMedio = Number(i.qty) > 0 ? Number(i.revenue) / Number(i.qty) : 0;
-                  return (
-                    <tr key={i.menu_item_id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-4">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
-                          idx < 3 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gray-400'
-                        }`}>
-                          {idx + 1}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 font-medium text-gray-900">{i.name}</td>
-                      <td className="text-right py-3 px-4 text-blue-600 font-semibold">{i.qty}</td>
-                      <td className="text-right py-3 px-4 text-green-600 font-semibold">
-                        {formatCurrency(Number(i.revenue || 0))}
-                      </td>
-                      <td className="text-right py-3 px-4 text-gray-700">
-                        {formatCurrency(ticketMedio)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">Nenhum dado de vendas</div>
-        )}
-      </div>
+      {/* 5️⃣ PERFORMANCE E DISPONIBILIDADE */}
+      {data.lowVolumeItems && data.unavailableItems && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">📉 Performance e Disponibilidade</h2>
+          <MenuPerformance
+            lowVolumeItems={data.lowVolumeItems}
+            unavailableItems={data.unavailableItems}
+          />
+        </div>
+      )}
 
-      {/* Link para Finance */}
-      <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-        <p className="text-sm text-purple-800">
-          <strong><FaLightbulb className="inline-block mr-2 w-4 h-4 text-purple-600" />Dica:</strong> Para análise financeira detalhada por forma de pagamento e períodos, 
-          acesse o <a href="/dashboard/finance" className="font-semibold underline hover:text-purple-900">Dashboard Financeiro</a>.
-        </p>
+      {/* 6️⃣ IMPACTO OPERACIONAL */}
+      {data.categoryPrepTime && data.itemDelayRate && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">⚙️ Impacto Operacional</h2>
+          <MenuOperationalImpact
+            categoryPrepTime={data.categoryPrepTime}
+            itemDelayRate={data.itemDelayRate}
+          />
+        </div>
+      )}
+
+      {/* Link de volta */}
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <a href="/dashboard/overview" className="text-purple-600 hover:text-purple-700 hover:underline">
+          ← Voltar para Visão Geral
+        </a>
       </div>
     </div>
   );

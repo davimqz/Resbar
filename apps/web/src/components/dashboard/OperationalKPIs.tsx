@@ -1,5 +1,3 @@
-import formatCurrency from '../../lib/formatCurrency';
-
 interface OperationalKPIsProps {
   avgDeliveryTime: number;
   avgTimeToPayment: number;

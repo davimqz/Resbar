@@ -33,7 +33,7 @@ export default function KitchenTemporal({ temporal, slaMinutes }: KitchenTempora
         <h3 className="text-lg font-semibold mb-4">🔥 Volume de Pedidos por Hora</h3>
         {volumeData.length > 0 ? (
           <>
-            <BarChart data={volumeData} color="#f97316" />
+            <BarChart data={volumeData} dataKey="value" xKey="label" color="#f97316" />
             {peakHours.length > 0 && (
               <div className="mt-4 p-3 bg-orange-50 rounded-lg">
                 <p className="text-sm text-orange-800">

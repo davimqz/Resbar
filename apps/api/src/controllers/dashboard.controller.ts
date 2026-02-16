@@ -1142,7 +1142,7 @@ export class DashboardController {
           AND "createdAt" <= ${end}
       `;
       const tablesUsed = Number((occupancyData as any[])[0]?.tables_used ?? 0);
-      const avgOccupiedHours = Number((occupancyData as any[])[0]?.avg_occupied_hours ?? 0);
+      // avgOccupiedHours omitted (not used) to avoid unused variable warning
       const utilizationRate = totalTables > 0 ? (tablesUsed / totalTables) * 100 : 0;
 
       // Taxa de rotatividade de mesas
@@ -1362,7 +1362,7 @@ export class DashboardController {
         _count: { status: true }
       });
 
-      const totalOrdersForStatus = orderStatusResult.reduce((sum, r) => sum + r._count.status, 0);
+      const totalOrdersForStatus = orderStatusResult.reduce((sum: number, r: any) => sum + r._count.status, 0);
       const orderStatusDistribution = (orderStatusResult as any[]).map((r: any) => ({
         status: r.status,
         count: r._count.status,
@@ -1378,7 +1378,7 @@ export class DashboardController {
         _count: { status: true }
       });
 
-      const totalTabsForStatus = tabStatusResult.reduce((sum, r) => sum + r._count.status, 0);
+      const totalTabsForStatus = tabStatusResult.reduce((sum: number, r: any) => sum + r._count.status, 0);
       const tabStatusDistribution = (tabStatusResult as any[]).map((r: any) => ({
         status: r.status,
         count: r._count.status,
@@ -1695,7 +1695,7 @@ export class DashboardController {
         _count: { status: true }
       });
 
-      const totalOrders = orderStatusResult.reduce((sum, r) => sum + r._count.status, 0);
+      const totalOrders = orderStatusResult.reduce((sum: number, r: any) => sum + r._count.status, 0);
       const orderStatus = (orderStatusResult as any[]).map((r: any) => ({
         status: r.status,
         count: r._count.status,
@@ -1862,7 +1862,7 @@ export class DashboardController {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const unavailableWithHistory = await Promise.all(
-        unavailableItems.map(async (item) => {
+        unavailableItems.map(async (item: any) => {
           const history: any[] = await prisma.$queryRaw`
             SELECT 
               SUM(quantity) as "totalQuantity",

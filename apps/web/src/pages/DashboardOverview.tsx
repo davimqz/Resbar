@@ -1,34 +1,8 @@
 import { useMemo, useState } from 'react';
-import KPICards from '../components/dashboard/KPICards';
 import TimeSeriesChart from '../components/dashboard/TimeSeriesChart';
-import WaiterRankingTable from '../components/dashboard/WaiterRankingTable';
-import AlertsList from '../components/dashboard/AlertsList';
-import PeriodComparison from '../components/dashboard/PeriodComparison';
-import DistributionPanel from '../components/dashboard/DistributionPanel';
-import FinanceKPIs from '../components/dashboard/FinanceKPIs';
-import FinanceAlerts from '../components/dashboard/FinanceAlerts';
-import RevenueDistributionCharts from '../components/dashboard/RevenueDistributionCharts';
-import BehavioralMetrics from '../components/dashboard/BehavioralMetrics';
-import FinanceTrendComparison from '../components/dashboard/FinanceTrendComparison';
-import OperationalKPIs from '../components/dashboard/OperationalKPIs';
-import OperationalFlow from '../components/dashboard/OperationalFlow';
-import TableEfficiency from '../components/dashboard/TableEfficiency';
-import OperationalAlerts from '../components/dashboard/OperationalAlerts';
-import OperationalStatus from '../components/dashboard/OperationalStatus';
-import KitchenKPIs from '../components/dashboard/KitchenKPIs';
-import KitchenItemsAnalysis from '../components/dashboard/KitchenItemsAnalysis';
-import KitchenTemporal from '../components/dashboard/KitchenTemporal';
-import KitchenAlerts from '../components/dashboard/KitchenAlerts';
-import KitchenStatus from '../components/dashboard/KitchenStatus';
-import MenuKPIs from '../components/dashboard/MenuKPIs';
-import MenuTopItems from '../components/dashboard/MenuTopItems';
-import MenuStrategicMatrix from '../components/dashboard/MenuStrategicMatrix';
-import MenuPerformance from '../components/dashboard/MenuPerformance';
-import MenuOperationalImpact from '../components/dashboard/MenuOperationalImpact';
-import MenuAlerts from '../components/dashboard/MenuAlerts';
 import useOverviewHook from '../hooks/useOverview';
 import { useDashboard } from '../hooks/useDashboard';
-import { FaDollarSign, FaUtensils, FaUserTie, FaCog, FaFire } from 'react-icons/fa';
+import { FaDollarSign, FaUtensils, FaUserTie, FaCog, FaFire, FaClock, FaCheckCircle } from 'react-icons/fa';
 import formatCurrency from '../lib/formatCurrency';
 
 function toISO(d: Date) {
@@ -42,7 +16,6 @@ export default function DashboardOverview() {
   const [preset, setPreset] = useState<'today' | '7d' | '30d' | 'custom'>('today');
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
-  const [activeSection, setActiveSection] = useState<'finance' | 'waiters' | 'operations' | 'kitchen' | 'menu'>('finance');
 
   const { start, end } = useMemo(() => {
     const now = new Date();
@@ -86,52 +59,20 @@ export default function DashboardOverview() {
 
   const loading = overviewQ.isLoading || revenueQ.isLoading || statsQ.isLoading || waitersQ.isLoading || financeQ.isLoading || operationsQ.isLoading || kitchenQ.isLoading || menuQ.isLoading;
 
-  const kpis = [] as { label: string; value: string | number; sub?: string }[];
-
-  // KPIs Executivos focados em garçons
-  if (waitersQ.data?.kpis) {
-    const kpisData = waitersQ.data.kpis;
-    kpis.push({ 
-      label: '💰 Receita Total (Garçons)', 
-      value: formatCurrency(kpisData.totalRevenue), 
-      sub: 'No período selecionado' 
-    });
-    kpis.push({ 
-      label: '🎟 Ticket Médio Geral', 
-      value: formatCurrency(kpisData.avgTicket), 
-      sub: 'Por comanda paga' 
-    });
-    kpis.push({ 
-      label: '⚡ Tempo Médio Entrega', 
-      value: kpisData.avgDeliveryTime > 0 ? `${Math.round(kpisData.avgDeliveryTime)} min` : '-', 
-      sub: 'Da cozinha ao cliente' 
-    });
-    kpis.push({ 
-      label: '🧾 Comandas Fechadas', 
-      value: kpisData.closedTabs, 
-      sub: 'Pagas no período' 
-    });
-    kpis.push({ 
-      label: '🕒 Receita/Hora Média', 
-      value: formatCurrency(kpisData.revenuePerHour), 
-      sub: 'Por hora trabalhada' 
-    });
-  }
-
   return (
     <div className="p-4 space-y-6">
       {/* Header com filtros */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Executiva</h1>
-          <p className="text-sm text-gray-500">Métricas consolidadas e análise de desempenho</p>
+          <h1 className="text-3xl font-bold text-gray-800">Visão Geral Executiva</h1>
+          <p className="text-sm text-gray-500 mt-1">Principais métricas consolidadas de todas as áreas</p>
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={() => setPreset('today')} className={`px-3 py-1 rounded ${preset==='today'? 'bg-slate-800 text-white':'bg-white'}`}>Hoje</button>
-          <button onClick={() => setPreset('7d')} className={`px-3 py-1 rounded ${preset==='7d'? 'bg-slate-800 text-white':'bg-white'}`}>7 dias</button>
-          <button onClick={() => setPreset('30d')} className={`px-3 py-1 rounded ${preset==='30d'? 'bg-slate-800 text-white':'bg-white'}`}>30 dias</button>
-          <button onClick={() => setPreset('custom')} className={`px-3 py-1 rounded ${preset==='custom'? 'bg-slate-800 text-white':'bg-white'}`}>Custom</button>
+          <button onClick={() => setPreset('today')} className={`px-3 py-1 rounded ${preset==='today'? 'bg-slate-800 text-white':'bg-white border'}`}>Hoje</button>
+          <button onClick={() => setPreset('7d')} className={`px-3 py-1 rounded ${preset==='7d'? 'bg-slate-800 text-white':'bg-white border'}`}>7 dias</button>
+          <button onClick={() => setPreset('30d')} className={`px-3 py-1 rounded ${preset==='30d'? 'bg-slate-800 text-white':'bg-white border'}`}>30 dias</button>
+          <button onClick={() => setPreset('custom')} className={`px-3 py-1 rounded ${preset==='custom'? 'bg-slate-800 text-white':'bg-white border'}`}>Custom</button>
         </div>
       </div>
 
@@ -142,62 +83,6 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* Tabs de Seleção */}
-      <div className="mb-6 border-b border-gray-200">
-        <div className="flex gap-4">
-          <button
-            onClick={() => setActiveSection('finance')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeSection === 'finance'
-                ? 'border-green-600 text-green-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            💰 Financeiro
-          </button>
-          <button
-            onClick={() => setActiveSection('waiters')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeSection === 'waiters'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            👔 Garçons
-          </button>
-          <button
-            onClick={() => setActiveSection('operations')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeSection === 'operations'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            ⚙️ Operacional
-          </button>
-          <button
-            onClick={() => setActiveSection('kitchen')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeSection === 'kitchen'
-                ? 'border-orange-600 text-orange-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            🔥 Cozinha
-          </button>
-          <button
-            onClick={() => setActiveSection('menu')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeSection === 'menu'
-                ? 'border-purple-600 text-purple-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            🍽 Cardápio
-          </button>
-        </div>
-      </div>
-
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -205,282 +90,166 @@ export default function DashboardOverview() {
         </div>
       ) : (
         <>
-          {/* SEÇÃO FINANCEIRO */}
-          {activeSection === 'finance' && financeQ.data && (
-            <>
-              {/* 1️⃣ KPIs EXECUTIVOS FINANCEIROS */}
-              <div className="mb-8">
-                <FinanceKPIs
-                  totalRevenue={financeQ.data.kpis.totalRevenue}
-                  avgTicket={financeQ.data.kpis.avgTicket}
-                  paidTabsCount={financeQ.data.kpis.paidTabsCount}
-                  totalServiceCharge={financeQ.data.kpis.totalServiceCharge}
-                  revenueByPayment={financeQ.data.kpis.revenueByPayment}
-                />
-              </div>
-
-              {/* 5️⃣ TENDÊNCIAS FINANCEIRAS */}
-              {financeQ.data.comparison && (
-                <div className="mb-8">
-                  <FinanceTrendComparison data={financeQ.data.comparison} />
+          {/* KPIs Consolidados de Todas as Áreas */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">📊 KPIs Principais</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Financeiro - Receita Total */}
+              {financeQ.data && (
+                <div className="bg-gradient-to-br from-green-50 to-white rounded-lg shadow-sm border border-green-200 p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-green-700">💰 Receita Total</div>
+                    <FaDollarSign className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-green-900">
+                    {formatCurrency(financeQ.data.kpis.totalRevenue)}
+                  </div>
+                  <div className="text-xs text-green-600 mt-1">Período selecionado</div>
                 </div>
               )}
 
-              {/* 4️⃣ ALERTAS FINANCEIROS */}
-              {financeQ.data.alerts && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">🚨 Alertas Financeiros</h2>
-                  <FinanceAlerts alerts={financeQ.data.alerts} />
+              {/* Financeiro - Ticket Médio */}
+              {financeQ.data && (
+                <div className="bg-gradient-to-br from-green-50 to-white rounded-lg shadow-sm border border-green-200 p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-green-700">🎟 Ticket Médio</div>
+                    <FaDollarSign className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-green-900">
+                    {formatCurrency(financeQ.data.kpis.avgTicket)}
+                  </div>
+                  <div className="text-xs text-green-600 mt-1">Por comanda paga</div>
                 </div>
               )}
 
-              {/* 2️⃣ DISTRIBUIÇÕES FINANCEIRAS */}
-              {financeQ.data.distributions && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">📊 Distribuições de Receita</h2>
-                  <RevenueDistributionCharts
-                    revenueByDay={financeQ.data.distributions.revenueByDay}
-                    revenueByShift={financeQ.data.distributions.revenueByShift}
-                    revenueByWaiter={financeQ.data.distributions.revenueByWaiter}
-                  />
+              {/* Waiters - Total de Garçons */}
+              {waitersQ.data && (
+                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg shadow-sm border border-indigo-200 p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-indigo-700">👔 Receita (Garçons)</div>
+                    <FaUserTie className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-indigo-900">
+                    {formatCurrency(waitersQ.data.kpis.totalRevenue)}
+                  </div>
+                  <div className="text-xs text-indigo-600 mt-1">{waitersQ.data.kpis.closedTabs} comandas fechadas</div>
                 </div>
               )}
 
-              {/* 3️⃣ INDICADORES COMPORTAMENTAIS */}
-              {financeQ.data.behavioral && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">📈 Indicadores Comportamentais</h2>
-                  <BehavioralMetrics
-                    avgTimeToPayment={financeQ.data.behavioral.avgTimeToPayment}
-                    tabTypeDistribution={financeQ.data.behavioral.tabTypeDistribution}
-                    avgItemPrice={financeQ.data.behavioral.avgItemPrice}
-                    avgQuantity={financeQ.data.behavioral.avgQuantity}
-                  />
-                </div>
-              )}
-            </>
-          )}
-
-          {/* SEÇÃO GARÇONS */}
-          {activeSection === 'waiters' && waitersQ.data && (
-            <>
-              {/* 1️⃣ KPIs EXECUTIVOS */}
-              <div>
-                <KPICards items={kpis} />
-              </div>
-
-              {/* 5️⃣ COMPARAÇÃO COM PERÍODO ANTERIOR */}
-              {waitersQ.data?.comparison && (
-                <PeriodComparison data={waitersQ.data.comparison} />
-              )}
-
-              {/* 4️⃣ ALERTAS INTELIGENTES */}
-              {waitersQ.data?.alerts && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">🚨 Alertas Inteligentes</h2>
-                  <AlertsList alerts={waitersQ.data.alerts} />
+              {/* Operations - Tempo Médio Entrega */}
+              {operationsQ.data && (
+                <div className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-blue-700">⚙️ Tempo Entrega</div>
+                    <FaClock className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-blue-900">
+                    {operationsQ.data.kpis.avgDeliveryTime > 0 ? 
+                      `${operationsQ.data.kpis.avgDeliveryTime.toFixed(1)} min` : 
+                      '-'}
+                  </div>
+                  <div className="text-xs text-blue-600 mt-1">Média cozinha → cliente</div>
                 </div>
               )}
 
-              {/* 2️⃣ RANKING DE GARÇONS */}
-              {waitersQ.data?.waiterRanking && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">📊 Ranking de Garçons</h2>
-                  <WaiterRankingTable data={waitersQ.data.waiterRanking} />
+              {/* Operations - Throughput */}
+              {operationsQ.data && (
+                <div className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-blue-700">⚡ Throughput</div>
+                    <FaCog className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-blue-900">
+                    {operationsQ.data.kpis.throughputPerHour.toFixed(1)}
+                  </div>
+                  <div className="text-xs text-blue-600 mt-1">Comandas/hora</div>
                 </div>
               )}
 
-              {/* 3️⃣ DISTRIBUIÇÃO E EQUILÍBRIO */}
-              {waitersQ.data?.distribution && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">📈 Distribuição e Equilíbrio</h2>
-                  <DistributionPanel 
-                    tabsDistribution={waitersQ.data.distribution.tabsDistribution}
-                    avgTimeByWaiter={waitersQ.data.distribution.avgTimeByWaiter}
-                    waiterHistory={waitersQ.data.distribution.waiterHistory}
-                  />
-                </div>
-              )}
-            </>
-          )}
-
-          {/* SEÇÃO OPERACIONAL */}
-          {activeSection === 'operations' && operationsQ.data && (
-            <>
-              {/* 1️⃣ KPIs OPERACIONAIS */}
-              <div className="mb-8">
-                <OperationalKPIs
-                  avgDeliveryTime={operationsQ.data.kpis.avgDeliveryTime}
-                  avgTimeToPayment={operationsQ.data.kpis.avgTimeToPayment}
-                  closedTabsCount={operationsQ.data.kpis.closedTabsCount}
-                  throughputPerHour={operationsQ.data.kpis.throughputPerHour}
-                  utilizationRate={operationsQ.data.kpis.utilizationRate}
-                  tableTurnoverRate={operationsQ.data.kpis.tableTurnoverRate}
-                />
-              </div>
-
-              {/* 4️⃣ ALERTAS OPERACIONAIS */}
-              {operationsQ.data.alerts && (
-                <div className="mb-8">
-                  <OperationalAlerts alerts={operationsQ.data.alerts} />
-                </div>
-              )}
-
-              {/* 2️⃣ FLUXO OPERACIONAL */}
-              {operationsQ.data.flow && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">📊 Fluxo Operacional</h2>
-                  <OperationalFlow flow={operationsQ.data.flow} />
+              {/* Kitchen - Tempo Preparo */}
+              {kitchenQ.data && (
+                <div className={`bg-gradient-to-br from-orange-50 to-white rounded-lg shadow-sm border ${
+                  kitchenQ.data.kpis.avgPrepTime <= kitchenQ.data.kpis.slaMinutes 
+                    ? 'border-green-200' 
+                    : 'border-orange-200'
+                } p-5`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`text-sm font-medium ${
+                      kitchenQ.data.kpis.avgPrepTime <= kitchenQ.data.kpis.slaMinutes 
+                        ? 'text-green-700' 
+                        : 'text-orange-700'
+                    }`}>🔥 Tempo Preparo</div>
+                    <FaFire className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div className={`text-2xl font-bold ${
+                    kitchenQ.data.kpis.avgPrepTime <= kitchenQ.data.kpis.slaMinutes 
+                      ? 'text-green-900' 
+                      : 'text-orange-900'
+                  }`}>
+                    {kitchenQ.data.kpis.avgPrepTime.toFixed(1)} min
+                  </div>
+                  <div className={`text-xs mt-1 flex items-center gap-1 ${
+                    kitchenQ.data.kpis.avgPrepTime <= kitchenQ.data.kpis.slaMinutes 
+                      ? 'text-green-600' 
+                      : 'text-orange-600'
+                  }`}>
+                    {kitchenQ.data.kpis.avgPrepTime <= kitchenQ.data.kpis.slaMinutes ? (
+                      <><FaCheckCircle className="w-3 h-3" /> Dentro do SLA</>
+                    ) : (
+                      <>⚠ SLA: {kitchenQ.data.kpis.slaMinutes} min</>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* 3️⃣ EFICIÊNCIA POR MESA */}
-              {operationsQ.data.tableEfficiency && (
-                <div className="mb-8">
-                  <TableEfficiency data={operationsQ.data.tableEfficiency} />
+              {/* Kitchen - Taxa Atraso */}
+              {kitchenQ.data && (
+                <div className="bg-gradient-to-br from-orange-50 to-white rounded-lg shadow-sm border border-orange-200 p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-orange-700">📊 Taxa Atraso</div>
+                    <FaFire className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div className={`text-2xl font-bold ${
+                    kitchenQ.data.kpis.delayedPercentage > 25 
+                      ? 'text-red-900' 
+                      : 'text-orange-900'
+                  }`}>
+                    {kitchenQ.data.kpis.delayedPercentage.toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-orange-600 mt-1">
+                    {kitchenQ.data.kpis.delayedCount} pedidos atrasados
+                  </div>
                 </div>
               )}
 
-              {/* 5️⃣ ANÁLISE DE STATUS */}
-              {operationsQ.data.status && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">📈 Análise de Status</h2>
-                  <OperationalStatus
-                    orderStatusDistribution={operationsQ.data.status.orderStatusDistribution}
-                    tabStatusDistribution={operationsQ.data.status.tabStatusDistribution}
-                  />
+              {/* Menu - Total Items */}
+              {menuQ.data && (
+                <div className="bg-gradient-to-br from-purple-50 to-white rounded-lg shadow-sm border border-purple-200 p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-purple-700">🍽 Receita Cardápio</div>
+                    <FaUtensils className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-purple-900">
+                    {formatCurrency(menuQ.data.kpis.totalRevenue)}
+                  </div>
+                  <div className="text-xs text-purple-600 mt-1">
+                    {menuQ.data.kpis.totalItems} itens ativos
+                  </div>
                 </div>
               )}
-            </>
-          )}
-
-          {/* SEÇÃO COZINHA */}
-          {activeSection === 'kitchen' && kitchenQ.data && (
-            <>
-              {/* 1️⃣ KPIs DA COZINHA */}
-              <div className="mb-8">
-                <KitchenKPIs
-                  avgPrepTime={kitchenQ.data.kpis.avgPrepTime}
-                  avgTotalTime={kitchenQ.data.kpis.avgTotalTime}
-                  delayedPercentage={kitchenQ.data.kpis.delayedPercentage}
-                  delayedCount={kitchenQ.data.kpis.delayedCount}
-                  ordersVolume={kitchenQ.data.kpis.ordersVolume}
-                  peakSimultaneous={kitchenQ.data.kpis.peakSimultaneous}
-                  slaMinutes={kitchenQ.data.kpis.slaMinutes}
-                />
-              </div>
-
-              {/* 4️⃣ ALERTAS DA COZINHA */}
-              {kitchenQ.data.alerts && (
-                <div className="mb-8">
-                  <KitchenAlerts alerts={kitchenQ.data.alerts} />
-                </div>
-              )}
-
-              {/* 2️⃣ ANÁLISE DE ITENS */}
-              {kitchenQ.data.items && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">🍽 Análise de Itens</h2>
-                  <KitchenItemsAnalysis
-                    byPrepTime={kitchenQ.data.items.byPrepTime}
-                    topSelling={kitchenQ.data.items.topSelling}
-                    critical={kitchenQ.data.items.critical}
-                  />
-                </div>
-              )}
-
-              {/* 3️⃣ DISTRIBUIÇÃO TEMPORAL */}
-              {kitchenQ.data.temporal && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">⏱ Distribuição Temporal</h2>
-                  <KitchenTemporal
-                    temporal={kitchenQ.data.temporal}
-                    slaMinutes={kitchenQ.data.kpis.slaMinutes}
-                  />
-                </div>
-              )}
-
-              {/* 5️⃣ STATUS DOS PEDIDOS */}
-              {kitchenQ.data.status && (
-                <div className="mb-8">
-                  <KitchenStatus status={kitchenQ.data.status} />
-                </div>
-              )}
-            </>
-          )}
-
-          {/* SEÇÃO CARDÁPIO */}
-          {activeSection === 'menu' && menuQ.data && (
-            <>
-              {/* 1️⃣ KPIs DO CARDÁPIO */}
-              <div className="mb-8">
-                <MenuKPIs
-                  totalRevenue={menuQ.data.kpis.totalRevenue}
-                  totalItems={menuQ.data.kpis.totalItems}
-                  unavailableCount={menuQ.data.kpis.unavailableCount}
-                  avgPrepTime={menuQ.data.kpis.avgPrepTime}
-                  concentrationRatio={menuQ.data.kpis.concentrationRatio}
-                />
-              </div>
-
-              {/* 5️⃣ ALERTAS DO CARDÁPIO */}
-              {menuQ.data.alerts && (
-                <div className="mb-8">
-                  <MenuAlerts alerts={menuQ.data.alerts} />
-                </div>
-              )}
-
-              {/* 2️⃣ TOP ITENS E RECEITA POR CATEGORIA */}
-              {menuQ.data.topItems && menuQ.data.categoryDistribution && (
-                <div className="mb-8">
-                  <MenuTopItems
-                    byVolume={menuQ.data.topItems.byVolume}
-                    byRevenue={menuQ.data.topItems.byRevenue}
-                    categoryDistribution={menuQ.data.categoryDistribution}
-                  />
-                </div>
-              )}
-
-              {/* 3️⃣ ANÁLISE ESTRATÉGICA */}
-              {menuQ.data.strategicMatrix && menuQ.data.bottlenecks && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">📊 Análise Estratégica</h2>
-                  <MenuStrategicMatrix
-                    strategicMatrix={menuQ.data.strategicMatrix}
-                    bottlenecks={menuQ.data.bottlenecks}
-                  />
-                </div>
-              )}
-
-              {/* 4️⃣ PERFORMANCE E DISPONIBILIDADE */}
-              {menuQ.data.lowVolumeItems && menuQ.data.unavailableItems && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">📉 Performance e Disponibilidade</h2>
-                  <MenuPerformance
-                    lowVolumeItems={menuQ.data.lowVolumeItems}
-                    unavailableItems={menuQ.data.unavailableItems}
-                  />
-                </div>
-              )}
-
-              {/* 6️⃣ IMPACTO OPERACIONAL */}
-              {menuQ.data.categoryPrepTime && menuQ.data.itemDelayRate && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">⚙️ Impacto Operacional</h2>
-                  <MenuOperationalImpact
-                    categoryPrepTime={menuQ.data.categoryPrepTime}
-                    itemDelayRate={menuQ.data.itemDelayRate}
-                  />
-                </div>
-              )}
-            </>
-          )}
+            </div>
+          </div>
 
           {/* Evolução da Receita */}
           <div>
-            <h2 className="text-lg font-medium mb-4">Receita — Evolução</h2>
+            <h2 className="text-xl font-semibold mb-4">📈 Evolução da Receita</h2>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <TimeSeriesChart data={overviewQ.data?.revenueSeries ?? revenueQ.data ?? []} dataKey="revenue" xKey={overviewQ.data?.revenueSeries ? 'day' : 'bucket'} />
+              <TimeSeriesChart 
+                data={overviewQ.data?.revenueSeries ?? revenueQ.data ?? []} 
+                dataKey="revenue" 
+                xKey={overviewQ.data?.revenueSeries ? 'day' : 'bucket'} 
+              />
             </div>
           </div>
 

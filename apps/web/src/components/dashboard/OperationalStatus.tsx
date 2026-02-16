@@ -30,25 +30,8 @@ export default function OperationalStatus({ orderStatusDistribution, tabStatusDi
     return labels[status] || status;
   };
 
-  const getOrderStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      PENDING: 'bg-yellow-100 text-yellow-800',
-      PREPARING: 'bg-blue-100 text-blue-800',
-      READY: 'bg-orange-100 text-orange-800',
-      DELIVERED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-gray-100 text-gray-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+  
 
-  const getTabStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      OPEN: 'bg-blue-100 text-blue-800',
-      CLOSED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-gray-100 text-gray-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

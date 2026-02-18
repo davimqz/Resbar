@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import type { TabCalculation, TableCalculation, CloseTabDTO } from '@resbar/shared';
+import type { TabCalculation, TableCalculation, PaymentEntry } from '@resbar/shared';
 
 export const useTab = () => {
   const queryClient = useQueryClient();
@@ -43,20 +43,17 @@ export const useTab = () => {
     return useMutation({
       mutationFn: async ({
         tabId,
-        paymentMethod,
-        paidAmount,
+        payments,
         serviceChargeIncluded,
         serviceChargePaidSeparately
       }: {
         tabId: string;
-        paymentMethod: CloseTabDTO['paymentMethod'];
-        paidAmount: number;
+        payments: PaymentEntry[];
         serviceChargeIncluded?: boolean;
         serviceChargePaidSeparately?: boolean;
       }) => {
         const { data } = await api.patch(`/tabs/${tabId}/close`, {
-          paymentMethod,
-          paidAmount,
+          payments,
           serviceChargeIncluded,
           serviceChargePaidSeparately,
         });

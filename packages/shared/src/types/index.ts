@@ -346,9 +346,17 @@ export interface TableCalculation {
 }
 
 // Payment types
-export interface CloseTabDTO {
+export interface PaymentEntry {
   paymentMethod: PaymentMethod;
-  paidAmount: number;
+  amount: number;
+  receivedAmount?: number; // Apenas para CASH
+  changeAmount?: number;   // Calculado automaticamente para CASH
+}
+
+export interface CloseTabDTO {
+  payments: PaymentEntry[];
+  serviceChargeIncluded?: boolean;
+  serviceChargePaidSeparately?: boolean;
 }
 
 // DTOs - User

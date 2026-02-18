@@ -102,10 +102,27 @@ model Tab {
   table                     Table?         @relation(fields: [tableId], references: [id], onDelete: Cascade)
   person                    Person?
   orders                    Order[]
+  payments                  Payment[]
   waiterHistory             TabWaiterHistory[]
   cancellationRequests      TabCancellationRequest[]
   
   @@map("tabs")
+}
+
+// Pagamentos de uma comanda (suporta múltiplos métodos de pagamento)
+model Payment {
+  id              String        @id @default(cuid())
+  tabId           String
+  paymentMethod   PaymentMethod
+  amount          Float         // Valor alocado para este método de pagamento
+  receivedAmount  Float?        // Valor recebido do cliente (apenas para CASH)
+  changeAmount    Float?        // Troco (apenas para CASH)
+  createdAt       DateTime      @default(now())
+  
+  tab             Tab           @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  
+  @@index([tabId])
+  @@map("payments")
 }
 
 // Pedidos feitos em uma comanda

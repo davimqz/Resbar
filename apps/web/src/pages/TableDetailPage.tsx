@@ -21,7 +21,7 @@ export default function TableDetailPage() {
   const { createOrder, updateOrder, deleteOrder } = useOrder();
   const { useMenuItems } = useMenuItem();
   const { useWaiters } = useWaiter();
-  const { useTableCalculation, deleteTab, cancelTab, transferAccount } = useTab();
+  const { useTableCalculation, deleteTab, transferAccount } = useTab();
   const { createTabCancellationRequest, updateTabCancellationRequest } = useTabCancellation();
   const { user } = useAuthStore();
 
@@ -113,9 +113,9 @@ export default function TableDetailPage() {
       });
 
       // If current user is admin, auto-approve the request (creates history with reason)
-      if (user?.role === UserRole.ADMIN) {
+        if (user?.role === UserRole.ADMIN) {
         try {
-          await updateTabCancellationRequest.mutateAsync({ id: created.id, data: { status: 'APPROVED' } });
+          await updateTabCancellationRequest.mutateAsync({ id: created.id, data: { status: 'APPROVED' as any } });
           alert('Solicitação criada e aprovada. Comanda cancelada.');
         } catch (err: any) {
           alert(err.message || 'Erro ao aprovar solicitação de cancelamento');

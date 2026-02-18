@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTab } from '../hooks/useTab';
 import { useTabCancellation } from '../hooks/useTabCancellation';
@@ -6,13 +6,17 @@ import { useAuthStore } from '../store/authStore';
 import { UserRole } from '@resbar/shared';
 import { useMenuItem } from '../hooks/useMenuItem';
 import { useOrder } from '../hooks/useOrder';
-import { PaymentMethod, PAYMENT_METHOD_LABELS, DEFAULT_SERVICE_CHARGE_RATE, MenuCategory, MENU_CATEGORY_LABELS, TabCancellationCategory, TAB_CANCELLATION_CATEGORY_LABELS } from '@resbar/shared';
+import { PaymentMethod, PAYMENT_METHOD_LABELS, DEFAULT_SERVICE_CHARGE_RATE, MenuCategory, MENU_CATEGORY_LABELS, TabCancellationCategory, TAB_CANCELLATION_CATEGORY_LABELS, TabCancellationRequestStatus, PaymentEntry } from '@resbar/shared';
 import formatCurrency from '../lib/formatCurrency';
+
+interface AddedPayment extends PaymentEntry {
+  id: string; // ID temporário para gerenciar a lista
+}
 
 export function PaymentPage() {
   const { tabId } = useParams<{ tabId: string }>();
   const navigate = useNavigate();
-  const { useTabCalculation, useCloseTab, deleteTab, cancelTab } = useTab();
+  const { useTabCalculation, useCloseTab, deleteTab } = useTab();
   const { createTabCancellationRequest, updateTabCancellationRequest } = useTabCancellation();
   const { user } = useAuthStore();
 
@@ -34,53 +38,95 @@ export function PaymentPage() {
   const [cancelCategory, setCancelCategory] = useState<TabCancellationCategory>(TabCancellationCategory.OUTROS);
   const [cancelReason, setCancelReason] = useState<string>('');
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
-  const [paidAmount, setPaidAmount] = useState<string>('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // Estado para múltiplos pagamentos
+  const [addedPayments, setAddedPayments] = useState<AddedPayment[]>([]);
+  const [showAddPayment, setShowAddPayment] = useState(false);
+  const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentReceived, setNewPaymentReceived] = useState('');
+
   const [serviceChargeIncluded, setServiceChargeIncluded] = useState(false);
   const [serviceChargePaidSeparately] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const subtotal = calculation?.subtotal || 0;
   const serviceCharge = subtotal * DEFAULT_SERVICE_CHARGE_RATE;
   const total = subtotal + (serviceChargeIncluded && !serviceChargePaidSeparately ? serviceCharge : 0);
-  const change = paidAmount ? Math.max(0, parseFloat(paidAmount) - total) : 0;
 
-  // Fechar dropdown ao clicar fora
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
+  // Calcular total alocado
+  const totalAllocated = addedPayments.reduce((sum, payment) => sum + payment.amount, 0);
+
+  const handleAddPayment = () => {
+    const amount = parseFloat(newPaymentAmount);
+    
+    if (!amount || amount <= 0) {
+      alert('Informe um valor válido maior que zero');
+      return;
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+
+    if (newPaymentMethod === PaymentMethod.CASH) {
+      const received = parseFloat(newPaymentReceived);
+      if (!received || received < amount) {
+        alert('O valor recebido deve ser maior ou igual ao valor do pagamento');
+        return;
+      }
+
+      const change = received - amount;
+      setAddedPayments([...addedPayments, {
+        id: `${Date.now()}`,
+        paymentMethod: newPaymentMethod,
+        amount,
+        receivedAmount: received,
+        changeAmount: change > 0 ? change : undefined,
+      }]);
+    } else {
+      setAddedPayments([...addedPayments, {
+        id: `${Date.now()}`,
+        paymentMethod: newPaymentMethod,
+        amount,
+      }]);
+    }
+
+    // Resetar formulário
+    setNewPaymentAmount('');
+    setNewPaymentReceived('');
+    setNewPaymentMethod(PaymentMethod.CASH);
+    setShowAddPayment(false);
+  };
+
+  const handleRemovePayment = (id: string) => {
+    setAddedPayments(addedPayments.filter(p => p.id !== id));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!tabId) return;
 
-    const amount = parseFloat(paidAmount) || total;
-
-    if (paymentMethod === PaymentMethod.CASH && amount < total) {
-      alert('Valor pago insuficiente!');
+    if (addedPayments.length === 0) {
+      alert('Adicione pelo menos um pagamento');
       return;
     }
 
+    // Validar que a soma dos pagamentos é igual ao total
+    const tolerance = 0.01; // Tolerância de 1 centavo
+    if (Math.abs(totalAllocated - total) > tolerance) {
+      alert(`A soma dos pagamentos (${formatCurrency(totalAllocated)}) deve ser igual ao total (${formatCurrency(total)})`);
+      return;
+    }
+
+    // Construir array de PaymentEntry (removendo o id temporário)
+    const paymentEntries: PaymentEntry[] = addedPayments.map(({ id, ...payment }) => payment);
+
     try {
-      console.log('Enviando pagamento:', {
+      console.log('Enviando pagamentos:', {
         tabId,
-        paymentMethod,
-        paidAmount: amount,
+        payments: paymentEntries,
         serviceChargeIncluded,
         serviceChargePaidSeparately,
       });
       await closeTab.mutateAsync({
         tabId,
-        paymentMethod,
-        paidAmount: amount,
+        payments: paymentEntries,
         serviceChargeIncluded,
         serviceChargePaidSeparately,
       });
@@ -105,7 +151,7 @@ export function PaymentPage() {
 
       if (user?.role === UserRole.ADMIN) {
         try {
-          await updateTabCancellationRequest.mutateAsync({ id: created.id, data: { status: 'APPROVED' } });
+          await updateTabCancellationRequest.mutateAsync({ id: created.id, data: { status: TabCancellationRequestStatus.APPROVED } });
           alert('Solicitação criada e aprovada. Comanda cancelada.');
         } catch (err: any) {
           alert(err.message || 'Erro ao aprovar solicitação de cancelamento');
@@ -261,6 +307,27 @@ export function PaymentPage() {
           {/* Formulário de pagamento */}
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 w-full">
 
+            {/* Indicador de progresso */}
+            <div className="p-4 bg-gray-100 rounded-lg border-2 border-gray-300">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Total alocado:</span>
+                <span className={`text-lg font-bold ${Math.abs(totalAllocated - total) < 0.01 ? 'text-green-600' : 'text-orange-600'}`}>
+                  {formatCurrency(totalAllocated)} / {formatCurrency(total)}
+                </span>
+              </div>
+              {Math.abs(totalAllocated - total) >= 0.01 && (
+                <p className="text-xs text-orange-600">
+                  {totalAllocated < total 
+                    ? `Faltam ${formatCurrency(total - totalAllocated)} para completar o pagamento`
+                    : `Excesso de ${formatCurrency(totalAllocated - total)}`
+                  }
+                </p>
+              )}
+              {Math.abs(totalAllocated - total) < 0.01 && totalAllocated > 0 && (
+                <p className="text-xs text-green-600">✓ Pagamento completo</p>
+              )}
+            </div>
+
             {/* Taxa de Serviço - apenas para garçons e admins */}
             {(user?.role === UserRole.WAITER || user?.role === UserRole.ADMIN) && (
               <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
@@ -276,7 +343,7 @@ export function PaymentPage() {
                     Incluir taxa de serviço de 10% ({formatCurrency(serviceCharge)})
                   </label>
                 </div>
-                    {serviceChargeIncluded && (
+                {serviceChargeIncluded && (
                   <p className="mt-2 text-xs text-gray-600">
                     Total com taxa: {formatCurrency(total)}
                   </p>
@@ -284,80 +351,62 @@ export function PaymentPage() {
               </div>
             )}
 
-            <div className="w-full">
-              <label className="block text-sm font-medium mb-2">
-                Método de Pagamento
-              </label>
-
-              {/* Dropdown Custom */}
-              <div ref={dropdownRef} className="relative w-full">
+            {/* Lista de Pagamentos Adicionados */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">Pagamentos</h3>
                 <button
                   type="button"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full max-w-full border rounded px-3 py-2 text-sm sm:text-base bg-white text-left flex items-center justify-between"
+                  onClick={() => setShowAddPayment(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
                 >
-                  <span className="truncate pr-2">
-                    {PAYMENT_METHOD_LABELS[paymentMethod]}
-                  </span>
-                  <svg
-                    className={`w-4 h-4 transition-transform flex-shrink-0 ${isDropdownOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  + Adicionar Pagamento
                 </button>
-
-                {isDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
-                    {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          setPaymentMethod(value as PaymentMethod);
-                          setIsDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm sm:text-base hover:bg-gray-100 truncate ${paymentMethod === value ? 'bg-blue-50 font-medium' : ''
-                          }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
+
+              {addedPayments.length === 0 ? (
+                <div className="p-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-center">
+                  <p className="text-gray-500">Nenhum pagamento adicionado</p>
+                  <p className="text-xs text-gray-400 mt-1">Clique em "Adicionar Pagamento" para começar</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {addedPayments.map((payment) => (
+                    <div key={payment.id} className="p-4 bg-white border-2 border-gray-200 rounded-lg">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-gray-900">
+                              {PAYMENT_METHOD_LABELS[payment.paymentMethod]}
+                            </span>
+                            <span className="text-lg font-bold text-green-600">
+                              {formatCurrency(payment.amount)}
+                            </span>
+                          </div>
+                          {payment.paymentMethod === PaymentMethod.CASH && payment.receivedAmount && (
+                            <div className="text-sm text-gray-600">
+                              <p>Recebido: {formatCurrency(payment.receivedAmount)}</p>
+                              {payment.changeAmount && payment.changeAmount > 0 && (
+                                <p className="text-green-600 font-semibold">
+                                  Troco: {formatCurrency(payment.changeAmount)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePayment(payment.id)}
+                          className="ml-3 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-
-            {paymentMethod === PaymentMethod.CASH && (
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Valor Recebido
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={total}
-                  value={paidAmount}
-                  onChange={(e) => setPaidAmount(e.target.value)}
-                  placeholder={`Mínimo: ${formatCurrency(total)}`}
-                  className="w-full border rounded px-3 py-2 text-sm sm:text-base"
-                  required
-                />
-                  {paidAmount && change > 0 && (
-                  <p className="mt-2 text-green-600 font-semibold text-sm sm:text-base">
-                    Troco: {formatCurrency(change)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {paymentMethod !== PaymentMethod.CASH && (
-              <div className="p-3 bg-blue-50 rounded text-xs sm:text-sm">
-                <p className="font-medium">Valor a cobrar: {formatCurrency(total)}</p>
-              </div>
-            )}
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <button
@@ -571,6 +620,93 @@ export function PaymentPage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Adicionar Pagamento */}
+          {showAddPayment && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <h2 className="text-xl font-bold mb-4">Adicionar Pagamento</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Método de Pagamento</label>
+                    <select
+                      value={newPaymentMethod}
+                      onChange={(e) => setNewPaymentMethod(e.target.value as PaymentMethod)}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 border"
+                    >
+                      {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Valor do Pagamento</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={newPaymentAmount}
+                      onChange={(e) => setNewPaymentAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-md border-gray-300 px-3 py-2 border"
+                      required
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Restante: {formatCurrency(Math.max(0, total - totalAllocated))}
+                    </p>
+                  </div>
+
+                  {newPaymentMethod === PaymentMethod.CASH && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Valor Recebido em Dinheiro</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={newPaymentReceived}
+                        onChange={(e) => setNewPaymentReceived(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full rounded-md border-gray-300 px-3 py-2 border"
+                        required
+                      />
+                      {parseFloat(newPaymentAmount) > 0 && parseFloat(newPaymentReceived) > 0 && (
+                        <p className="mt-2 text-sm">
+                          Troco: <span className="font-semibold text-green-600">
+                            {formatCurrency(Math.max(0, parseFloat(newPaymentReceived) - parseFloat(newPaymentAmount)))}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleAddPayment}
+                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    >
+                      Adicionar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddPayment(false);
+                        setNewPaymentAmount('');
+                        setNewPaymentReceived('');
+                        setNewPaymentMethod(PaymentMethod.CASH);
+                      }}
+                      className="px-4 py-2 border rounded hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}

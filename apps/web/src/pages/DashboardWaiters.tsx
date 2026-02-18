@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useMetrics from '../hooks/useMetrics';
 import { Link } from 'react-router-dom';
 import { useDashboard } from '../hooks/useDashboard';
@@ -58,8 +58,6 @@ export default function DashboardWaiters() {
   // Calcular KPIs gerais
   // Use summaryData when available (server aggregates for period)
   const totalRevenue = summaryData?.revenue ?? 0;
-  const closedCount = summaryData?.closedCount ?? 0;
-  const avgTicket = summaryData?.avgTicket ?? 0;
 
   // Prefer the count of currently active waiters when available, otherwise fall back to the ranking length.
   const totalWaiters = Array.isArray(statsData?.activeWaiters) && statsData.activeWaiters.length > 0

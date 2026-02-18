@@ -213,13 +213,28 @@ export class DashboardController {
 
       const avgTicket = transactionsCount ? revenue / transactionsCount : 0;
 
-      // Revenue by payment method
+      // Revenue by payment method - combina dados legados (Tab.paymentMethod) e novos (Payment table)
       const revenueByPaymentRows = await prisma.$queryRaw`
-        SELECT "paymentMethod", ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue
-        FROM "tabs"
-        WHERE "paidAt" IS NOT NULL
-          AND "paidAt" >= ${start}
-          AND "paidAt" <= ${end}
+        SELECT "paymentMethod", ROUND(SUM(revenue)::numeric, 2)::double precision AS revenue
+        FROM (
+          -- Dados legados: pagamentos armazenados diretamente no Tab
+          SELECT "paymentMethod", COALESCE("paidAmount", total) AS revenue
+          FROM "tabs"
+          WHERE "paidAt" IS NOT NULL
+            AND "paidAt" >= ${start}
+            AND "paidAt" <= ${end}
+            AND "paymentMethod" IS NOT NULL
+          
+          UNION ALL
+          
+          -- Novos dados: múltiplos pagamentos na tabela Payment
+          SELECT p."paymentMethod", p.amount AS revenue
+          FROM "payments" p
+          JOIN "tabs" t ON t.id = p."tabId"
+          WHERE t."paidAt" IS NOT NULL
+            AND t."paidAt" >= ${start}
+            AND t."paidAt" <= ${end}
+        ) AS combined_payments
         GROUP BY "paymentMethod"
       `;
 
@@ -771,17 +786,31 @@ export class DashboardController {
       const avgTicket = Number((ticketResult as any[])[0]?.avg_ticket ?? 0);
       const paidTabsCount = Number((ticketResult as any[])[0]?.tabs_count ?? 0);
 
-      // Receita por método de pagamento
+      // Receita por método de pagamento - combina dados legados (Tab.paymentMethod) e novos (Payment table)
       const revenueByPaymentResult = await prisma.$queryRaw`
         SELECT 
           "paymentMethod",
-          ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue,
+          ROUND(SUM(revenue)::numeric, 2)::double precision AS revenue,
           COUNT(*) AS count
-        FROM "tabs"
-        WHERE "paidAt" IS NOT NULL
-          AND "paidAt" >= ${start}
-          AND "paidAt" <= ${end}
-          AND "paymentMethod" IS NOT NULL
+        FROM (
+          -- Dados legados: pagamentos armazenados diretamente no Tab
+          SELECT "paymentMethod", COALESCE("paidAmount", total) AS revenue
+          FROM "tabs"
+          WHERE "paidAt" IS NOT NULL
+            AND "paidAt" >= ${start}
+            AND "paidAt" <= ${end}
+            AND "paymentMethod" IS NOT NULL
+          
+          UNION ALL
+          
+          -- Novos dados: múltiplos pagamentos na tabela Payment
+          SELECT p."paymentMethod", p.amount AS revenue
+          FROM "payments" p
+          JOIN "tabs" t ON t.id = p."tabId"
+          WHERE t."paidAt" IS NOT NULL
+            AND t."paidAt" >= ${start}
+            AND t."paidAt" <= ${end}
+        ) AS combined_payments
         GROUP BY "paymentMethod"
         ORDER BY revenue DESC
       `;
@@ -2345,7 +2374,6 @@ export class DashboardController {
       const previousSales = previousSalesData[0] || {};
       const previousQuantity = parseInt(previousSales.totalQuantity || 0);
       const previousRevenue = parseFloat(previousSales.totalRevenue || 0);
-      const previousOrders = parseInt(previousSales.ordersCount || 0);
 
       const quantityChange = previousQuantity > 0 
         ? ((totalQuantity - previousQuantity) / previousQuantity) * 100 

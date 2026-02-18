@@ -1,4 +1,5 @@
 import React from 'react';
+import ReturnRequestsSection from '../components/dashboard/ReturnRequestsSection';
 
 const MetricCard = ({ title, value, icon }: { title: string; value: string; icon?: React.ReactNode }) => (
   <div className="bg-white rounded-2xl shadow-sm p-5 border border-slate-200">
@@ -96,6 +97,10 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+          </div>
+          {/* Return requests section */}
+          <div className="grid grid-cols-1 gap-6">
+            <ReturnRequestsSection />
           </div>
         </div>
       </main>

@@ -8,14 +8,14 @@ async function main() {
   // Criar garçons
   const waiter1 = await prisma.waiter.create({
     data: {
-      name: 'João Silva',
+      name: 'João Pedro Silva',
       active: true,
     },
   });
 
   const waiter2 = await prisma.waiter.create({
     data: {
-      name: 'Maria Santos',
+      name: 'Maria Eduarda Santos',
       active: true,
     },
   });
@@ -83,16 +83,14 @@ async function main() {
         allergens: ['DAIRY'],
       },
     }),
-        // Risoto de Cogumelos and Cheesecake mappings removed
-      }),
-      prisma.menuItem.create({
-        data: {
-          name: 'Salmão Grelhado',
-          description: 'Salmão grelhado com legumes e molho de ervas',
-          detailedDescription: 'Filé de salmão fresco grelhado no ponto, acompanhado de legumes salteados na manteiga e molho de ervas finas',
-          price: 48.9,
-          category: 'MAIN_COURSE',
-          available: true,
+    prisma.menuItem.create({
+      data: {
+        name: 'Salmão Grelhado',
+        description: 'Salmão grelhado com legumes e molho de ervas',
+        detailedDescription: 'Filé de salmão fresco grelhado no ponto, acompanhado de legumes salteados na manteiga e molho de ervas finas',
+        price: 48.9,
+        category: 'MAIN_COURSE',
+        available: true,
           imageUrl: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927',
           allergens: ['FISH', 'DAIRY'],
         },
@@ -255,23 +253,47 @@ async function main() {
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
-  // Lists of real names to use in seed (replace or extend as needed)
+  // Lists of real Brazilian names to use in seed
   const waiterNames = [
-    'João Silva',
-    'Maria Santos',
-    'Carlos Pereira',
-    'Ana Oliveira',
-    'Marcos Almeida',
-    'Beatriz Costa',
-    'Rafael Gomes',
-    'Fernanda Ribeiro'
+    'João Pedro Silva',
+    'Maria Eduarda Santos',
+    'Carlos Alberto Pereira',
+    'Ana Carolina Oliveira',
+    'Marcos Vinícius Almeida',
+    'Beatriz Cristina Costa',
+    'Rafael Henrique Gomes',
+    'Fernanda Regina Ribeiro',
+    'Lucas Gabriel Martins',
+    'Juliana Aparecida Souza',
+    'Ricardo Augusto Lima',
+    'Camila Vitória Fernandes',
+    'Diego Fernando Barros',
+    'Paula Cristiane Nunes',
+    'Thiago Leonardo Rocha'
   ];
 
   const personNames = [
-    'Lucas Oliveira', 'Mariana Souza', 'Pedro Almeida', 'Gabriela Costa', 'Bruno Pereira',
-    'Aline Rodrigues', 'Ricardo Martins', 'Camila Fernandes', 'Diego Barros', 'Paula Nunes',
-    'Thiago Rocha', 'Juliana Lima', 'Eduardo Carvalho', 'Sofia Mendes', 'Gustavo Araújo',
-    'Marcos Silva', 'Isabela Castro', 'Henrique Moreira', 'Letícia Barbosa', 'Vitor Menezes'
+    // Nomes masculinos
+    'Lucas Oliveira', 'Pedro Henrique Almeida', 'Bruno César Costa', 'Gustavo Antônio Pereira', 
+    'Marcos Paulo Silva', 'Ricardo Alexandre Martins', 'Diego Fernando Barros', 'Thiago Leonardo Rocha',
+    'Eduardo Carlos Lima', 'Henrique Augusto Moreira', 'Vitor Gabriel Menezes', 'Felipe André Cardoso',
+    'Rodrigo Luís Ferreira', 'André Gustavo Pinto', 'Renato Silva Mendes', 'Fábio Roberto Araújo',
+    'Márcio José Carvalho', 'Sérgio Henrique Barbosa', 'Daniel Augusto Reis', 'Rafael Eduardo Cunha',
+    'Leonardo da Silva Santos', 'Matheus Vinícius Correia', 'Alexandre José Souza', 'Paulo César Ramos',
+    'José Carlos Nascimento', 'Antônio Marcos Freitas', 'João Victor Campos', 'Pedro Lucas Dias',
+    'Fernando Augusto Teixeira', 'Igor Henrique Castro',
+    
+    // Nomes femininos
+    'Mariana Souza', 'Gabriela Costa', 'Aline Rodrigues', 'Camila Fernandes', 'Paula Nunes',
+    'Juliana Lima', 'Sofia Mendes', 'Isabela Castro', 'Letícia Barbosa', 'Ana Paula Silva',
+    'Maria Eduarda Santos', 'Fernanda Cristina Alves', 'Patrícia Regina Martins', 'Carla Beatriz Rocha',
+    'Bianca Aparecida Oliveira', 'Jéssica Vitória Pereira', 'Thaís Cristiane Gomes', 'Vanessa Silva Costa',
+    'Adriana Luísa Cardoso', 'Priscila Fernanda Ribeiro', 'Tatiana Maria Ferreira', 'Roberta Sales Pinto',
+    'Simone Cristina Mendes', 'Silvia Helena Araújo', 'Débora Cristiane Carvalho', 'Renata Aparecida Barbosa',
+    'Larissa Fernanda Reis', 'Amanda Vitória Cunha', 'Carolina Maria Santos', 'Talita Regina Correia',
+    'Natália Cristina Souza', 'Bruna Gabriela Ramos', 'Raquel Beatriz Nascimento', 'Eliana José Freitas',
+    'Michele Aparecida Campos', 'Andréia Cristina Dias', 'Luciana Fernanda Teixeira', 'Mônica Silva Castro',
+    'Cristina Regina Oliveira', 'Daniela Aparecida Lima'
   ];
 
   // Carregar menu items criados
@@ -279,12 +301,12 @@ async function main() {
 
   // Criar mais garçons se necessário
   const extraWaiters = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     const name = waiterNames[(i + 2) % waiterNames.length];
     const w = await prisma.waiter.create({
       data: {
         name,
-        active: true,
+        active: i < 6, // 6 ativos, 2 inativos
         onBreak: false,
       },
     });
@@ -294,7 +316,7 @@ async function main() {
   const allWaiters = [waiter1, waiter2, ...extraWaiters];
 
   // Range de dias e data atual (usado para gerar horários)
-  const startDaysAgo = 21; // criar 21 dias de dados
+  const startDaysAgo = 30; // criar 30 dias de dados (1 mês) - teste inicial
   const today = new Date();
 
   // Enriquecer dados dos garçons: clockedIn/Out e pausas aleatórias
@@ -320,8 +342,10 @@ async function main() {
     day.setDate(day.getDate() - d);
     day.setHours(12, 0, 0, 0);
 
-    // gerar entre 10 e 30 comandas por dia
-    const tabsCount = randInt(10, 30);
+    console.log(`  Dia ${startDaysAgo - d + 1}/${startDaysAgo + 1}: ${day.toISOString().split('T')[0]}`);
+
+    // gerar entre 8 e 20 comandas por dia (reduzido para evitar timeout)
+    const tabsCount = randInt(8, 20);
     for (let t = 0; t < tabsCount; t++) {
       const isCounter = Math.random() < 0.15; // 15% balcão
       const table = isCounter ? null : pick(tables);
@@ -329,19 +353,9 @@ async function main() {
 
       const createdAt = new Date(day.getTime() + randInt(0, 10 * 60 * 60 * 1000)); // entre meio-dia e 10h
 
-      // cria pessoa (cliente) para a comanda usando nomes reais
-      const person = await prisma.person.create({
-        data: {
-          name: pick(personNames),
-          tabId: '', // será atualizado depois
-        },
-      }).catch(async () => {
-        // fallback caso relação 1:1 impeça criação sem tab
-        return null;
-      });
-
       // Escolher um garçom e criar histórico
       const waiter = pick(allWaiters);
+      const personName = pick(personNames); // Guardar nome para usar depois
 
       // criar orders
       const ordersCount = randInt(1, 5);
@@ -386,69 +400,81 @@ async function main() {
       const changeAmount = paid && Math.random() < 0.3 ? +(randInt(0, 10)).toFixed(2) : null;
 
       // create tab
-      const tab = await prisma.tab.create({
-        data: {
-          tableId: table ? table.id : null,
-          type: tabType,
-          total: +total.toFixed(2),
-          status: paid ? 'CLOSED' : 'OPEN',
-          paymentMethod: paid ? pick(['CASH','CREDIT_CARD','DEBIT_CARD','PIX']) : null,
-          paidAmount: paidAmount,
-          changeAmount: changeAmount,
-          serviceChargeIncluded: serviceChargeIncluded,
-          serviceChargePaidSeparately: false,
-          serviceChargeAmount: serviceChargeIncluded ? +(total * 0.1).toFixed(2) : 0,
-          isUnifiedTab: false,
-          unifiedTabPersonCount: 1,
-          customerSeatedAt: new Date(createdAt.getTime() - randInt(1,10)*60*1000),
-          requestedBillAt: paid ? new Date(paidAt!.getTime() - randInt(1,15)*60*1000) : null,
-          paidAt: paidAt,
-          createdAt,
-          updatedAt: paidAt ?? createdAt,
-          closedAt: paid ? new Date(createdAt.getTime() + randInt(20, 300) * 60 * 1000) : null,
-          orders: {
-            create: ordersData.map((od) => ({
-              menuItemId: od.menuItemId,
-              quantity: od.quantity,
-              unitPrice: od.unitPrice,
-              totalPrice: od.totalPrice,
-              status: od.status,
-              notes: od.notes,
-              serviceChargeIncluded: od.serviceChargeIncluded,
-              sentToKitchenAt: od.sentToKitchenAt,
-              startedPreparingAt: od.startedPreparingAt,
-              readyAt: od.readyAt,
-              deliveredAt: od.deliveredAt,
-              createdAt: od.createdAt,
-              updatedAt: od.updatedAt,
-            })),
-          },
-          waiterHistory: {
-            create: {
-              waiterId: waiter.id,
-              assignedAt: new Date(createdAt.getTime() - randInt(1,5) * 60 * 1000),
-              removedAt: paid ? new Date((paidAt ?? createdAt).getTime() + randInt(1,10) * 60 * 1000) : null,
+      try {
+        const tab = await prisma.tab.create({
+          data: {
+            tableId: table ? table.id : null,
+            type: tabType,
+            total: +total.toFixed(2),
+            status: paid ? 'CLOSED' : 'OPEN',
+            paymentMethod: paid ? pick(['CASH','CREDIT_CARD','DEBIT_CARD','PIX']) : null,
+            paidAmount: paidAmount,
+            changeAmount: changeAmount,
+            serviceChargeIncluded: serviceChargeIncluded,
+            serviceChargePaidSeparately: false,
+            serviceChargeAmount: serviceChargeIncluded ? +(total * 0.1).toFixed(2) : 0,
+            isUnifiedTab: false,
+            unifiedTabPersonCount: 1,
+            customerSeatedAt: new Date(createdAt.getTime() - randInt(1,10)*60*1000),
+            requestedBillAt: paid ? new Date(paidAt!.getTime() - randInt(1,15)*60*1000) : null,
+            paidAt: paidAt,
+            createdAt,
+            updatedAt: paidAt ?? createdAt,
+            closedAt: paid ? new Date(createdAt.getTime() + randInt(20, 300) * 60 * 1000) : null,
+            orders: {
+              create: ordersData.map((od) => ({
+                menuItemId: od.menuItemId,
+                quantity: od.quantity,
+                unitPrice: od.unitPrice,
+                totalPrice: od.totalPrice,
+                status: od.status,
+                notes: od.notes,
+                serviceChargeIncluded: od.serviceChargeIncluded,
+                sentToKitchenAt: od.sentToKitchenAt,
+                startedPreparingAt: od.startedPreparingAt,
+                readyAt: od.readyAt,
+                deliveredAt: od.deliveredAt,
+                createdAt: od.createdAt,
+                updatedAt: od.updatedAt,
+              })),
+            },
+            waiterHistory: {
+              create: {
+                waiterId: waiter.id,
+                assignedAt: new Date(createdAt.getTime() - randInt(1,5) * 60 * 1000),
+                removedAt: paid ? new Date((paidAt ?? createdAt).getTime() + randInt(1,10) * 60 * 1000) : null,
+              },
             },
           },
-        },
-      });
+        });
 
-      // If person created earlier with missing tabId, try to link it
-      if (person && person.tabId === '') {
-        await prisma.person.update({ where: { id: person.id }, data: { tabId: tab.id } }).catch(() => {});
-      } else if (!person) {
-        // create person associated with tab
-        await prisma.person.create({ data: { name: `Cliente ${tab.id.substring(0,6)}`, tabId: tab.id } }).catch(() => {});
+        // Criar person com nome real para esta comanda
+        try {
+          await prisma.person.create({
+            data: {
+              name: personName,
+              tabId: tab.id
+            }
+          });
+        } catch (personErr) {
+          console.error(`    ⚠️  Erro ao criar Person para tab ${tab.id}:`, personErr);
+        }
+
+        createdTabs.push(tab);
+      } catch (tabErr) {
+        console.error(`    ❌ Erro ao criar Tab ${t + 1}/${tabsCount}:`, tabErr);
+        throw tabErr;
       }
-
-      createdTabs.push(tab);
     }
   }
 
   // Gerar comandas adicionais por garçom para enriquecer métricas do dashboard
   console.log('\n🛠️  Gerando comandas adicionais por garçom (aumentando métricas)...');
+  let waiterIndex = 0;
   for (const waiter of allWaiters) {
-    const extraTabsForWaiter = randInt(5, 15);
+    waiterIndex++;
+    console.log(`  Garçom ${waiterIndex}/${allWaiters.length}: ${waiter.name}`);
+    const extraTabsForWaiter = randInt(5, 15); // Reduzido para evitar timeout
     for (let k = 0; k < extraTabsForWaiter; k++) {
       const createdAt = new Date(today.getTime() - randInt(1, startDaysAgo) * 24 * 60 * 60 * 1000 + randInt(0, 8) * 60 * 60 * 1000);
       const ordersCount = randInt(1, 4);
@@ -486,52 +512,69 @@ async function main() {
       const paid = true;
       const paidAt = new Date(createdAt.getTime() + randInt(20, 180) * 60 * 1000);
 
-      const tab = await prisma.tab.create({
-        data: {
-          tableId: null,
-          type: 'COUNTER',
-          total: +total.toFixed(2),
-          status: paid ? 'CLOSED' : 'OPEN',
-          paymentMethod: paid ? pick(['CASH','CREDIT_CARD','DEBIT_CARD','PIX']) : null,
-          paidAmount: paid ? +(total + (Math.random() < 0.85 ? total * 0.1 : 0)).toFixed(2) : null,
-          changeAmount: null,
-          serviceChargeIncluded: true,
-          serviceChargePaidSeparately: false,
-          serviceChargeAmount: +(total * 0.1).toFixed(2),
-          isUnifiedTab: false,
-          unifiedTabPersonCount: 1,
-          customerSeatedAt: new Date(createdAt.getTime() - randInt(1,10)*60*1000),
-          requestedBillAt: paid ? new Date(paidAt.getTime() - randInt(1,15)*60*1000) : null,
-          paidAt,
-          createdAt,
-          updatedAt: paidAt ?? createdAt,
-          closedAt: paid ? new Date(createdAt.getTime() + randInt(20, 300) * 60 * 1000) : null,
-          orders: { create: ordersData.map((od) => ({
-            menuItemId: od.menuItemId,
-            quantity: od.quantity,
-            unitPrice: od.unitPrice,
-            totalPrice: od.totalPrice,
-            status: od.status,
-            notes: od.notes,
-            serviceChargeIncluded: od.serviceChargeIncluded,
-            sentToKitchenAt: od.sentToKitchenAt,
-            startedPreparingAt: od.startedPreparingAt,
-            readyAt: od.readyAt,
-            deliveredAt: od.deliveredAt,
-            createdAt: od.createdAt,
-            updatedAt: od.updatedAt,
-          })) },
-          waiterHistory: {
-            create: {
-              waiterId: waiter.id,
-              assignedAt: new Date(createdAt.getTime() - randInt(1,5) * 60 * 1000),
-              removedAt: new Date(createdAt.getTime() + randInt(20,120) * 60 * 1000),
-            }
-          },
-        }
-      });
+      try {
+        const tab = await prisma.tab.create({
+          data: {
+            tableId: null,
+            type: 'COUNTER',
+            total: +total.toFixed(2),
+            status: paid ? 'CLOSED' : 'OPEN',
+            paymentMethod: paid ? pick(['CASH','CREDIT_CARD','DEBIT_CARD','PIX']) : null,
+            paidAmount: paid ? +(total + (Math.random() < 0.85 ? total * 0.1 : 0)).toFixed(2) : null,
+            changeAmount: null,
+            serviceChargeIncluded: true,
+            serviceChargePaidSeparately: false,
+            serviceChargeAmount: +(total * 0.1).toFixed(2),
+            isUnifiedTab: false,
+            unifiedTabPersonCount: 1,
+            customerSeatedAt: new Date(createdAt.getTime() - randInt(1,10)*60*1000),
+            requestedBillAt: paid ? new Date(paidAt.getTime() - randInt(1,15)*60*1000) : null,
+            paidAt,
+            createdAt,
+            updatedAt: paidAt ?? createdAt,
+            closedAt: paid ? new Date(createdAt.getTime() + randInt(20, 300) * 60 * 1000) : null,
+            orders: { create: ordersData.map((od) => ({
+              menuItemId: od.menuItemId,
+              quantity: od.quantity,
+              unitPrice: od.unitPrice,
+              totalPrice: od.totalPrice,
+              status: od.status,
+              notes: od.notes,
+              serviceChargeIncluded: od.serviceChargeIncluded,
+              sentToKitchenAt: od.sentToKitchenAt,
+              startedPreparingAt: od.startedPreparingAt,
+              readyAt: od.readyAt,
+              deliveredAt: od.deliveredAt,
+              createdAt: od.createdAt,
+              updatedAt: od.updatedAt,
+            })) },
+            waiterHistory: {
+              create: {
+                waiterId: waiter.id,
+                assignedAt: new Date(createdAt.getTime() - randInt(1,5) * 60 * 1000),
+                removedAt: new Date(createdAt.getTime() + randInt(20,120) * 60 * 1000),
+              }
+            },
+          }
+        });
 
-      createdTabs.push(tab);
+        // Criar person com nome real para a comanda extra
+        try {
+          await prisma.person.create({
+            data: {
+              name: pick(personNames),
+              tabId: tab.id
+            }
+          });
+        } catch (personErr) {
+          console.error(`    ⚠️  Erro ao criar Person para tab extra ${tab.id}:`, personErr);
+        }
+
+        createdTabs.push(tab);
+      } catch (tabErr) {
+        console.error(`    ❌ Erro ao criar Tab extra ${k + 1}/${extraTabsForWaiter}:`, tabErr);
+        throw tabErr;
+      }
     }
   }
 

@@ -111,6 +111,26 @@ export function useOverview() {
     });
   }
 
+  function useMenuItemMetrics(itemId: string | null, opts?: { start?: string; end?: string }) {
+    return useQuery({
+      queryKey: ['dashboard', 'menu-item-metrics', itemId, opts],
+      queryFn: async () => {
+        if (!itemId) return null;
+        const params = new URLSearchParams();
+        if (opts?.start) params.set('start', opts.start);
+        if (opts?.end) params.set('end', opts.end);
+        const url = params.toString() ? `/dashboard/menu/item/${itemId}/metrics?${params.toString()}` : `/dashboard/menu/item/${itemId}/metrics`;
+        const { data } = await api.get(url);
+        return data.data;
+      },
+      enabled: !!itemId,
+      retry: 0,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchInterval: false,
+    });
+  }
+
   function useRevenue(opts?: { start?: string; end?: string; groupBy?: 'hour' | 'day' }) {
     return useQuery({
       queryKey: ['metrics', 'revenue', opts],
@@ -129,7 +149,7 @@ export function useOverview() {
     });
   }
 
-  return { useOverviewData, useOverviewWaiters, useOverviewFinance, useOverviewOperations, useOverviewKitchen, useOverviewMenu, useRevenue };
+  return { useOverviewData, useOverviewWaiters, useOverviewFinance, useOverviewOperations, useOverviewKitchen, useOverviewMenu, useMenuItemMetrics, useRevenue };
 }
 
 export default useOverview;

@@ -11,6 +11,8 @@ import inventoryRoutes from './inventory.js';
 import uploadRoutes from './uploads.js';
 import adminRoutes from './admin.js';
 import metricsRoutes from './metrics.js';
+import returnRequestRoutes from './return-requests.js';
+import tabCancellationRoutes from './tab-cancellation.js';
 
 const router = Router();
 
@@ -26,5 +28,7 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/metrics', metricsRoutes);
 router.use('/admin', adminRoutes);
+router.use('/return-requests', returnRequestRoutes);
+router.use('/tab-cancellation', tabCancellationRoutes);
 
 export default router;

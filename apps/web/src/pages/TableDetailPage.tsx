@@ -9,17 +9,20 @@ import { UserRole } from '@resbar/shared';
 import { useMenuItem } from '../hooks/useMenuItem';
 import { useWaiter } from '../hooks/useWaiter';
 import { useTab } from '../hooks/useTab';
-import { TableStatus, MenuCategory, MENU_CATEGORY_LABELS } from '@resbar/shared';
+import { useTabCancellation } from '../hooks/useTabCancellation';
+import { TableStatus, MenuCategory, MENU_CATEGORY_LABELS, TabCancellationCategory, TAB_CANCELLATION_CATEGORY_LABELS } from '@resbar/shared';
+import RequestReturnModal from '../components/RequestReturnModal';
 
 export default function TableDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { useTableById, assignWaiter, updateTableStatus } = useTable();
-  const { createPerson, deletePerson } = usePerson();
+  const { createPerson } = usePerson();
   const { createOrder, updateOrder, deleteOrder } = useOrder();
   const { useMenuItems } = useMenuItem();
   const { useWaiters } = useWaiter();
   const { useTableCalculation, deleteTab, transferAccount } = useTab();
+  const { createTabCancellationRequest, updateTabCancellationRequest } = useTabCancellation();
   const { user } = useAuthStore();
 
   const { data: table, isLoading } = useTableById(id!);
@@ -38,6 +41,16 @@ export default function TableDetailPage() {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editingQuantity, setEditingQuantity] = useState<number>(1);
   const [editingNotes, setEditingNotes] = useState<string>('');
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnOrderId, setReturnOrderId] = useState<string>('');
+  const [returnOrderName, setReturnOrderName] = useState<string>('');
+  const [returnTabId, setReturnTabId] = useState<string | undefined>(undefined);
+  const [returnTableNumber, setReturnTableNumber] = useState<number | string | undefined>(undefined);
+  const [showCancelRequestModal, setShowCancelRequestModal] = useState(false);
+  const [cancelRequestTabId, setCancelRequestTabId] = useState<string>('');
+  const [cancelCategory, setCancelCategory] = useState<TabCancellationCategory>(TabCancellationCategory.OUTROS);
+  const [cancelReason, setCancelReason] = useState<string>('');
+
 
   const handleAddPerson = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +100,36 @@ export default function TableDetailPage() {
       } catch (error: any) {
         alert(error.message || 'Erro ao liberar mesa');
       }
+    }
+  };
+
+  const handleRequestCancellation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const created = await createTabCancellationRequest.mutateAsync({
+        tabId: cancelRequestTabId,
+        category: cancelCategory,
+        reason: cancelReason || undefined,
+      });
+
+      // If current user is admin, auto-approve the request (creates history with reason)
+        if (user?.role === UserRole.ADMIN) {
+        try {
+          await updateTabCancellationRequest.mutateAsync({ id: created.id, data: { status: 'APPROVED' as any } });
+          alert('Solicitação criada e aprovada. Comanda cancelada.');
+        } catch (err: any) {
+          alert(err.message || 'Erro ao aprovar solicitação de cancelamento');
+        }
+      } else {
+        alert('Solicitação de cancelamento enviada para aprovação do administrador');
+      }
+
+      setShowCancelRequestModal(false);
+      setCancelRequestTabId('');
+      setCancelCategory(TabCancellationCategory.OUTROS);
+      setCancelReason('');
+    } catch (error: any) {
+      alert(error.message || 'Erro ao solicitar cancelamento');
     }
   };
 
@@ -245,15 +288,31 @@ export default function TableDetailPage() {
                     >
                       Transferir Conta
                     </button>
-                    {tab.person && (
+                    {/* Garçom pode solicitar cancelamento (precisa aprovação admin) */}
+                    {user?.role === UserRole.WAITER && (
                       <button
-                        onClick={() => deletePerson.mutate(tab.person.id)}
-                        className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                        onClick={() => {
+                          setCancelRequestTabId(tab.id);
+                          setShowCancelRequestModal(true);
+                        }}
+                        className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:brightness-95"
                       >
-                        Remover
+                        Solicitar Cancelamento
                       </button>
                     )}
+                    {/* Admin pode cancelar direto (sem aprovação) */}
                     {user?.role === UserRole.ADMIN && (
+                      <button
+                        onClick={() => {
+                          setCancelRequestTabId(tab.id);
+                          setShowCancelRequestModal(true);
+                        }}
+                        className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:brightness-95"
+                      >
+                        Cancelar Comanda (ADM)
+                      </button>
+                    )}
+                    {(user?.role === UserRole.ADMIN || user?.role === UserRole.WAITER) && (
                       <button
                         onClick={async () => {
                           if (!confirm('Excluir comanda? Esta ação é irreversível.')) return;
@@ -266,7 +325,7 @@ export default function TableDetailPage() {
                         }}
                         className="px-3 py-1 bg-red-700 text-white text-sm rounded hover:bg-red-800"
                       >
-                        Excluir Comanda (ADM)
+                        Excluir Comanda
                       </button>
                     )}
                   </div>
@@ -296,33 +355,52 @@ export default function TableDetailPage() {
                             <p className="text-lg font-bold text-gray-900 ml-4">
                               R$ {order.totalPrice.toFixed(2)}
                             </p>
-                            {user?.role === UserRole.ADMIN && (
-                              <div className="flex flex-col">
+                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.WAITER) && (
+                              <div className="flex flex-col gap-2">
+                                {/* Botão de Solicitar Devolução (Admin e Garçom) */}
                                 <button
                                   onClick={() => {
-                                    setEditingOrderId(order.id);
-                                    setEditingQuantity(order.quantity);
-                                    setEditingNotes(order.notes || '');
-                                    setShowEditOrder(true);
+                                    setReturnOrderId(order.id);
+                                    setReturnOrderName(order.menuItem.name);
+                                    setReturnTabId(tab.id);
+                                    setReturnTableNumber((table as any).number || undefined);
+                                    setShowReturnModal(true);
                                   }}
-                                  className="px-2 py-1 text-xs bg-yellow-400 text-black rounded hover:brightness-95"
+                                  className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600"
                                 >
-                                  Editar
+                                  Solicitar Devolução
                                 </button>
-                                <button
-                                  onClick={async () => {
-                                    if (!confirm('Excluir pedido?')) return;
-                                    try {
-                                      await deleteOrder.mutateAsync(order.id);
-                                      alert('Pedido excluído');
-                                    } catch (err: any) {
-                                      alert(err.message || 'Erro ao excluir pedido');
-                                    }
-                                  }}
-                                  className="mt-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                                >
-                                  Excluir
-                                </button>
+                                
+                                {/* Botões de Editar e Excluir (somente Admin) */}
+                                {user?.role === UserRole.ADMIN && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setEditingOrderId(order.id);
+                                        setEditingQuantity(order.quantity);
+                                        setEditingNotes(order.notes || '');
+                                        setShowEditOrder(true);
+                                      }}
+                                      className="px-2 py-1 text-xs bg-yellow-400 text-black rounded hover:brightness-95"
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm('Excluir pedido?')) return;
+                                        try {
+                                          await deleteOrder.mutateAsync(order.id);
+                                          alert('Pedido excluído');
+                                        } catch (err: any) {
+                                          alert(err.message || 'Erro ao excluir pedido');
+                                        }
+                                      }}
+                                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                    >
+                                      Excluir
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -472,6 +550,87 @@ export default function TableDetailPage() {
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 bg-yellow-400 text-black px-4 py-2 rounded">Salvar</button>
                 <button type="button" onClick={() => setShowEditOrder(false)} className="px-4 py-2 border rounded">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Solicitação de Devolução */}
+      {showReturnModal && (
+        <RequestReturnModal
+          orderId={returnOrderId}
+          orderName={returnOrderName}
+          tabId={returnTabId}
+          tableNumber={returnTableNumber}
+          onClose={() => {
+            setShowReturnModal(false);
+            setReturnOrderId('');
+            setReturnOrderName('');
+            setReturnTabId(undefined);
+            setReturnTableNumber(undefined);
+          }}
+        />
+      )}
+
+      {/* Modal de Solicitação de Cancelamento */}
+      {showCancelRequestModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-bold mb-4">Solicitar Cancelamento de Comanda</h2>
+            <form onSubmit={handleRequestCancellation} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Motivo do Cancelamento</label>
+                <select
+                  value={cancelCategory}
+                  onChange={(e) => setCancelCategory(e.target.value as TabCancellationCategory)}
+                  className="w-full rounded-md border-gray-300 px-3 py-2 border"
+                  required
+                >
+                  {Object.entries(TAB_CANCELLATION_CATEGORY_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Descrição Detalhada (opcional)</label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Descreva o motivo do cancelamento..."
+                  rows={4}
+                  className="w-full rounded-md border-gray-300 px-3 py-2 border"
+                />
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ Esta solicitação será enviada para aprovação do administrador.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-orange-500 text-white px-4 py-2 rounded hover:brightness-95"
+                >
+                  Enviar Solicitação
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelRequestModal(false);
+                    setCancelRequestTabId('');
+                    setCancelCategory(TabCancellationCategory.OUTROS);
+                    setCancelReason('');
+                  }}
+                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
               </div>
             </form>
           </div>

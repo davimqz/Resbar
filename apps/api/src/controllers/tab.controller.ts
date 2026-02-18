@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { DEFAULT_SERVICE_CHARGE_RATE } from '@resbar/shared';
+import { DEFAULT_SERVICE_CHARGE_RATE, PaymentMethod, PaymentEntry } from '@resbar/shared';
 
 export class TabController {
   async getAll(_req: Request, res: Response, next: NextFunction) {
@@ -13,6 +13,11 @@ export class TabController {
           orders: {
             include: {
               menuItem: true,
+            },
+          },
+          waiterHistory: {
+            include: {
+              waiter: true,
             },
           },
         },
@@ -121,7 +126,7 @@ export class TabController {
   async close(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { paymentMethod, paidAmount, serviceChargeIncluded = true, serviceChargePaidSeparately = false } = req.body;
+      const { payments, serviceChargeIncluded = true, serviceChargePaidSeparately = false } = req.body;
 
       // Buscar a comanda com o total e tableId
       const existingTab = await prisma.tab.findUnique({
@@ -148,33 +153,69 @@ export class TabController {
         }
       }
 
-      // Calcular troco (se pagamento em dinheiro)
-      const changeAmount = paymentMethod === 'CASH'
-        ? Math.max(0, paidAmount - finalTotal)
-        : 0;
+      // Filtrar pagamentos com valor maior que zero
+      const validPayments = payments.filter((p: PaymentEntry) => p.amount > 0);
 
-      const tab = await prisma.tab.update({
-        where: { id },
-        data: {
-          status: 'CLOSED',
-          closedAt: new Date(),
-          paidAt: new Date(),
-          paymentMethod,
-          paidAmount,
-          changeAmount,
-          serviceChargeIncluded,
-          serviceChargePaidSeparately,
-          serviceChargeAmount,
-        },
-        include: {
-          person: true,
-          orders: {
-            include: {
-              menuItem: true,
-            },
-          },
-        },
+      if (validPayments.length === 0) {
+        throw new AppError(400, 'Pelo menos um pagamento com valor maior que zero é obrigatório');
+      }
+
+      // Validar que a soma dos pagamentos é igual ao total
+      const totalPaid = validPayments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
+      const tolerance = 0.01; // Tolerância de 1 centavo para erros de arredondamento
+
+      if (Math.abs(totalPaid - finalTotal) > tolerance) {
+        throw new AppError(
+          400,
+          `Soma dos pagamentos (R$ ${totalPaid.toFixed(2)}) deve ser igual ao total (R$ ${finalTotal.toFixed(2)})`
+        );
+      }
+
+      // Processar cada pagamento e calcular troco para CASH
+      const paymentsToCreate = validPayments.map((payment: PaymentEntry) => {
+        const changeAmount = payment.paymentMethod === PaymentMethod.CASH && payment.receivedAmount
+          ? Math.max(0, payment.receivedAmount - payment.amount)
+          : 0;
+
+        return {
+          tabId: id,
+          paymentMethod: payment.paymentMethod,
+          amount: payment.amount,
+          receivedAmount: payment.receivedAmount || null,
+          changeAmount: changeAmount > 0 ? changeAmount : null,
+        };
       });
+
+      // Criar pagamentos e atualizar comanda em uma transação
+      const [_, tab] = await prisma.$transaction([
+        prisma.payment.createMany({
+          data: paymentsToCreate,
+        }),
+        prisma.tab.update({
+          where: { id },
+          data: {
+            status: 'CLOSED',
+            closedAt: new Date(),
+            paidAt: new Date(),
+            serviceChargeIncluded,
+            serviceChargePaidSeparately,
+            serviceChargeAmount,
+            // Manter campos legados como null para novos pagamentos
+            paymentMethod: null,
+            paidAmount: null,
+            changeAmount: null,
+          },
+          include: {
+            person: true,
+            orders: {
+              include: {
+                menuItem: true,
+              },
+            },
+            payments: true,
+          },
+        }),
+      ]);
 
       // Verificar se todas as comandas da mesa foram pagas
       if (existingTab.tableId) {
@@ -194,6 +235,63 @@ export class TabController {
               allTabsPaidAt: new Date(),
             },
           });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: tab,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cancel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+
+      const existingTab = await prisma.tab.findUnique({
+        where: { id },
+        select: { status: true, tableId: true },
+      });
+
+      if (!existingTab) {
+        throw new AppError(404, 'Comanda não encontrada');
+      }
+
+      if (existingTab.status === 'CLOSED') {
+        throw new AppError(400, 'Não é possível cancelar uma comanda fechada');
+      }
+
+      if ((existingTab.status as any) === 'CANCELLED') {
+        throw new AppError(400, 'Comanda já está cancelada');
+      }
+
+      const tab = await prisma.tab.update({
+        where: { id },
+        data: {
+          status: 'CANCELLED',
+          closedAt: new Date(),
+        },
+        include: {
+          person: true,
+          table: true,
+          orders: {
+            include: {
+              menuItem: true,
+            },
+          },
+        },
+      });
+
+      if (existingTab.tableId) {
+        const openTabsCount = await prisma.tab.count({
+          where: { tableId: existingTab.tableId, status: 'OPEN' },
+        });
+
+        if (openTabsCount === 0) {
+          await prisma.table.update({ where: { id: existingTab.tableId }, data: { status: 'AVAILABLE' } });
         }
       }
 

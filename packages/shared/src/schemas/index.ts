@@ -80,9 +80,17 @@ export const idParamSchema = z.object({
 });
 
 // Payment schemas
+export const paymentEntrySchema = z.object({
+  paymentMethod: z.nativeEnum(PaymentMethod),
+  amount: z.number().nonnegative('Valor deve ser não-negativo'),
+  receivedAmount: z.number().positive('Valor recebido deve ser positivo').optional(),
+  changeAmount: z.number().nonnegative('Troco deve ser não-negativo').optional(),
+});
+
 export const closeTabSchema = z.object({
   body: z.object({
-    paymentMethod: z.nativeEnum(PaymentMethod),
-    paidAmount: z.number().positive('Valor pago deve ser positivo'),
+    payments: z.array(paymentEntrySchema).min(1, 'Pelo menos um pagamento é obrigatório'),
+    serviceChargeIncluded: z.boolean().optional(),
+    serviceChargePaidSeparately: z.boolean().optional(),
   }),
 });

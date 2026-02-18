@@ -102,9 +102,27 @@ model Tab {
   table                     Table?         @relation(fields: [tableId], references: [id], onDelete: Cascade)
   person                    Person?
   orders                    Order[]
+  payments                  Payment[]
   waiterHistory             TabWaiterHistory[]
+  cancellationRequests      TabCancellationRequest[]
   
   @@map("tabs")
+}
+
+// Pagamentos de uma comanda (suporta múltiplos métodos de pagamento)
+model Payment {
+  id              String        @id @default(cuid())
+  tabId           String
+  paymentMethod   PaymentMethod
+  amount          Float         // Valor alocado para este método de pagamento
+  receivedAmount  Float?        // Valor recebido do cliente (apenas para CASH)
+  changeAmount    Float?        // Troco (apenas para CASH)
+  createdAt       DateTime      @default(now())
+  
+  tab             Tab           @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  
+  @@index([tabId])
+  @@map("payments")
 }
 
 // Pedidos feitos em uma comanda
@@ -127,8 +145,49 @@ model Order {
   
   tab                  Tab         @relation(fields: [tabId], references: [id], onDelete: Cascade)
   menuItem             MenuItem    @relation(fields: [menuItemId], references: [id])
+  returnRequests       ReturnRequest[]
   
   @@map("orders")
+}
+
+// Solicitações de devolução de pedidos
+model ReturnRequest {
+  id           String              @id @default(cuid())
+  orderId      String
+  category     ReturnCategory
+  subcategory  String              // Subcategoria específica (será validada no backend)
+  description  String?             // Descrição detalhada do problema
+  sourceType   ReturnSourceType?   // Normalized source: COMANDA or MESA
+  sourceId     String?             // Id of comanda or number of mesa
+  imageUrl     String?             // URL da imagem anexada
+  status       ReturnRequestStatus @default(PENDING)
+  createdById  String              // Usuário que criou a solicitação
+  resolvedById String?             // Usuário que resolveu a solicitação
+  resolvedAt   DateTime?           // Quando foi resolvida
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  
+  order        Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@map("return_requests")
+}
+
+// Solicitações de cancelamento de comandas
+model TabCancellationRequest {
+  id                String                        @id @default(cuid())
+  tabId             String
+  category          TabCancellationCategory
+  reason            String?                       // Motivo detalhado
+  requestedByUserId String                        // Usuário que solicitou
+  approvedByUserId  String?                       // Admin que aprovou/rejeitou
+  status            TabCancellationRequestStatus  @default(PENDING)
+  resolvedAt        DateTime?                     // Quando foi resolvida
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+  
+  tab               Tab                           @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  
+  @@map("tab_cancellation_requests")
 }
 
 // Itens do cardápio
@@ -204,6 +263,7 @@ enum Gender {
 enum TabStatus {
   OPEN
   CLOSED
+  CANCELLED
 }
 
 enum TabType {
@@ -232,4 +292,42 @@ enum PaymentMethod {
   CREDIT_CARD
   DEBIT_CARD
   PIX
+}
+
+enum ReturnCategory {
+  PREPARO           // Problemas com o preparo do prato
+  OPERACIONAL       // Erros operacionais
+  TEMPO_ESPERA      // Problemas com tempo de espera
+  QUALIDADE         // Problemas com qualidade
+  SEGURANCA         // Problemas de segurança alimentar
+  COMERCIAL         // Questões comerciais
+}
+
+enum ReturnRequestStatus {
+  PENDING     // Aguardando análise
+  APPROVED    // Aprovada
+  REJECTED    // Rejeitada
+}
+
+// Fonte normalizada da solicitação
+enum ReturnSourceType {
+  COMANDA
+  MESA
+}
+
+// Categoria de cancelamento de comanda
+enum TabCancellationCategory {
+  CLIENTE_DESISTIU        // Cliente desistiu/saiu sem consumir
+  ERRO_OPERACIONAL        // Erro na abertura da comanda
+  MESA_INCORRETA          // Comanda aberta na mesa errada
+  DUPLICADA               // Comanda duplicada
+  CLIENTE_INSATISFEITO    // Cliente insatisfeito com atendimento
+  OUTROS                  // Outros motivos
+}
+
+// Status da solicitação de cancelamento
+enum TabCancellationRequestStatus {
+  PENDING     // Aguardando aprovação do admin
+  APPROVED    // Aprovada pelo admin
+  REJECTED    // Rejeitada pelo admin
 }

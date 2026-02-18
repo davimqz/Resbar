@@ -14,6 +14,7 @@ router.get('/overview-finance', authenticateToken, requireAdmin, controller.getO
 router.get('/overview-operations', authenticateToken, requireAdmin, controller.getOverviewOperations.bind(controller));
 router.get('/overview-kitchen', authenticateToken, requireAdmin, controller.getOverviewKitchen.bind(controller));
 router.get('/overview-menu', authenticateToken, requireAdmin, controller.getOverviewMenu.bind(controller));
+router.get('/menu/item/:id/metrics', authenticateToken, requireAdmin, controller.getMenuItemMetrics.bind(controller));
 router.get('/finance/summary', authenticateToken, requireAdmin, controller.getFinanceSummary.bind(controller));
 router.get('/operational-metrics', authenticateToken, requireAdmin, controller.getOperationalMetrics.bind(controller));
 

@@ -1,4 +1,5 @@
 import formatCurrency from '../../lib/formatCurrency';
+import { MENU_CATEGORY_LABELS } from '@resbar/shared';
 
 interface MenuItem {
   itemId: string;
@@ -43,7 +44,7 @@ export default function MenuTopItems({ byVolume, byRevenue, categoryDistribution
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900">{item.itemName}</div>
-                  <div className="text-sm text-gray-500">{item.itemCategory}</div>
+                  <div className="text-sm text-gray-500">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-gray-900">{item.totalQuantity}</div>
@@ -78,7 +79,7 @@ export default function MenuTopItems({ byVolume, byRevenue, categoryDistribution
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900">{item.itemName}</div>
-                  <div className="text-sm text-gray-500">{item.itemCategory}</div>
+                  <div className="text-sm text-gray-500">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-green-700">
@@ -111,7 +112,7 @@ export default function MenuTopItems({ byVolume, byRevenue, categoryDistribution
               <div key={idx} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="font-semibold text-gray-900">{cat.category}</div>
+                    <div className="font-semibold text-gray-900">{(MENU_CATEGORY_LABELS as any)[cat.category] || cat.category}</div>
                     <div className="text-xs text-gray-500">
                       {cat.itemsCount} {cat.itemsCount === 1 ? 'item' : 'itens'}
                     </div>
@@ -148,7 +149,7 @@ export default function MenuTopItems({ byVolume, byRevenue, categoryDistribution
               <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                 <div className="text-sm text-blue-800">
                   <strong>💡 Insight:</strong> A categoria{' '}
-                  <strong>"{categoryDistribution[0].category}"</strong> lidera com{' '}
+                  <strong>"{(MENU_CATEGORY_LABELS as any)[categoryDistribution[0].category] || categoryDistribution[0].category}"</strong> lidera com{' '}
                   {categoryDistribution[0].revenuePercentage.toFixed(1)}% da receita total (
                   {formatCurrency(categoryDistribution[0].totalRevenue)}).
                 </div>

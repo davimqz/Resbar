@@ -9,6 +9,7 @@ export enum TableStatus {
 export enum TabStatus {
   OPEN = 'OPEN',
   CLOSED = 'CLOSED',
+  CANCELLED = 'CANCELLED',
 }
 
 export enum TabType {
@@ -50,6 +51,41 @@ export enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
   OTHER = 'OTHER',
+}
+
+export enum ReturnCategory {
+  PREPARO = 'PREPARO',
+  OPERACIONAL = 'OPERACIONAL',
+  TEMPO_ESPERA = 'TEMPO_ESPERA',
+  QUALIDADE = 'QUALIDADE',
+  SEGURANCA = 'SEGURANCA',
+  COMERCIAL = 'COMERCIAL',
+}
+
+export enum ReturnRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+export enum ReturnSourceType {
+  COMANDA = 'COMANDA',
+  MESA = 'MESA',
+}
+
+export enum TabCancellationCategory {
+  CLIENTE_DESISTIU = 'CLIENTE_DESISTIU',
+  ERRO_OPERACIONAL = 'ERRO_OPERACIONAL',
+  MESA_INCORRETA = 'MESA_INCORRETA',
+  DUPLICADA = 'DUPLICADA',
+  CLIENTE_INSATISFEITO = 'CLIENTE_INSATISFEITO',
+  OUTROS = 'OUTROS',
+}
+
+export enum TabCancellationRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 // DTOs - Waiter
@@ -178,6 +214,68 @@ export interface UpdateOrderDTO {
   notes?: string;
 }
 
+// DTOs - ReturnRequest
+export interface ReturnRequestDTO {
+  id: string;
+  orderId: string;
+  category: ReturnCategory;
+  subcategory: string;
+  description: string | null;
+  imageUrl: string | null;
+  sourceType?: ReturnSourceType | null;
+  sourceId?: string | null;
+  status: ReturnRequestStatus;
+  createdById: string;
+  resolvedById: string | null;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  order?: OrderDTO;
+}
+
+export interface CreateReturnRequestDTO {
+  orderId: string;
+  category: ReturnCategory;
+  subcategory: string;
+  description?: string;
+  sourceType?: ReturnSourceType;
+  sourceId?: string;
+  imageUrl?: string;
+}
+
+export interface UpdateReturnRequestDTO {
+  status?: ReturnRequestStatus;
+  resolvedById?: string;
+  sourceType?: ReturnSourceType;
+  sourceId?: string;
+}
+
+// DTOs - TabCancellationRequest
+export interface TabCancellationRequestDTO {
+  id: string;
+  tabId: string;
+  category: TabCancellationCategory;
+  reason: string | null;
+  requestedByUserId: string;
+  approvedByUserId: string | null;
+  status: TabCancellationRequestStatus;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  tab?: TabDTO;
+}
+
+export interface CreateTabCancellationRequestDTO {
+  tabId: string;
+  category: TabCancellationCategory;
+  reason?: string;
+}
+
+export interface UpdateTabCancellationRequestDTO {
+  status?: TabCancellationRequestStatus;
+  approvedByUserId?: string;
+}
+
 // DTOs - MenuItem
 export interface MenuItemDTO {
   id: string;
@@ -248,9 +346,17 @@ export interface TableCalculation {
 }
 
 // Payment types
-export interface CloseTabDTO {
+export interface PaymentEntry {
   paymentMethod: PaymentMethod;
-  paidAmount: number;
+  amount: number;
+  receivedAmount?: number; // Apenas para CASH
+  changeAmount?: number;   // Calculado automaticamente para CASH
+}
+
+export interface CloseTabDTO {
+  payments: PaymentEntry[];
+  serviceChargeIncluded?: boolean;
+  serviceChargePaidSeparately?: boolean;
 }
 
 // DTOs - User

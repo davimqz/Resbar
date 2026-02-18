@@ -213,13 +213,28 @@ export class DashboardController {
 
       const avgTicket = transactionsCount ? revenue / transactionsCount : 0;
 
-      // Revenue by payment method
+      // Revenue by payment method - combina dados legados (Tab.paymentMethod) e novos (Payment table)
       const revenueByPaymentRows = await prisma.$queryRaw`
-        SELECT "paymentMethod", ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue
-        FROM "tabs"
-        WHERE "paidAt" IS NOT NULL
-          AND "paidAt" >= ${start}
-          AND "paidAt" <= ${end}
+        SELECT "paymentMethod", ROUND(SUM(revenue)::numeric, 2)::double precision AS revenue
+        FROM (
+          -- Dados legados: pagamentos armazenados diretamente no Tab
+          SELECT "paymentMethod", COALESCE("paidAmount", total) AS revenue
+          FROM "tabs"
+          WHERE "paidAt" IS NOT NULL
+            AND "paidAt" >= ${start}
+            AND "paidAt" <= ${end}
+            AND "paymentMethod" IS NOT NULL
+          
+          UNION ALL
+          
+          -- Novos dados: múltiplos pagamentos na tabela Payment
+          SELECT p."paymentMethod", p.amount AS revenue
+          FROM "payments" p
+          JOIN "tabs" t ON t.id = p."tabId"
+          WHERE t."paidAt" IS NOT NULL
+            AND t."paidAt" >= ${start}
+            AND t."paidAt" <= ${end}
+        ) AS combined_payments
         GROUP BY "paymentMethod"
       `;
 
@@ -485,6 +500,18 @@ export class DashboardController {
         }
       });
 
+      // Taxa de serviço total arrecadada no período
+      const totalServiceChargeResult = await prisma.$queryRaw`
+        SELECT ROUND(SUM(COALESCE(t."serviceChargeAmount", 0))::numeric, 2)::double precision AS total_service_charge
+        FROM tab_waiter_history h
+        JOIN "tabs" t ON t.id = h."tabId"
+        WHERE t."paidAt" IS NOT NULL
+          AND t."paidAt" >= ${start}
+          AND t."paidAt" <= ${end}
+          AND (h."removedAt" IS NULL OR h."removedAt" > t."paidAt")
+      `;
+      const totalServiceCharge = Number((totalServiceChargeResult as any[])[0]?.total_service_charge ?? 0);
+
       // Receita por hora de garçom (usando horas trabalhadas)
       const revenuePerHourResult = await prisma.$queryRaw`
         SELECT 
@@ -703,7 +730,8 @@ export class DashboardController {
             avgTicket,
             avgDeliveryTime,
             closedTabs,
-            revenuePerHour: revenuePerHour.reduce((sum, r) => sum + r.revenuePerHour, 0) / (revenuePerHour.length || 1)
+            revenuePerHour: revenuePerHour.reduce((sum, r) => sum + r.revenuePerHour, 0) / (revenuePerHour.length || 1),
+            totalServiceCharge
           },
           // Ranking
           waiterRanking: rankingWithHours,
@@ -758,17 +786,31 @@ export class DashboardController {
       const avgTicket = Number((ticketResult as any[])[0]?.avg_ticket ?? 0);
       const paidTabsCount = Number((ticketResult as any[])[0]?.tabs_count ?? 0);
 
-      // Receita por método de pagamento
+      // Receita por método de pagamento - combina dados legados (Tab.paymentMethod) e novos (Payment table)
       const revenueByPaymentResult = await prisma.$queryRaw`
         SELECT 
           "paymentMethod",
-          ROUND(SUM(COALESCE("paidAmount", total))::numeric, 2)::double precision AS revenue,
+          ROUND(SUM(revenue)::numeric, 2)::double precision AS revenue,
           COUNT(*) AS count
-        FROM "tabs"
-        WHERE "paidAt" IS NOT NULL
-          AND "paidAt" >= ${start}
-          AND "paidAt" <= ${end}
-          AND "paymentMethod" IS NOT NULL
+        FROM (
+          -- Dados legados: pagamentos armazenados diretamente no Tab
+          SELECT "paymentMethod", COALESCE("paidAmount", total) AS revenue
+          FROM "tabs"
+          WHERE "paidAt" IS NOT NULL
+            AND "paidAt" >= ${start}
+            AND "paidAt" <= ${end}
+            AND "paymentMethod" IS NOT NULL
+          
+          UNION ALL
+          
+          -- Novos dados: múltiplos pagamentos na tabela Payment
+          SELECT p."paymentMethod", p.amount AS revenue
+          FROM "payments" p
+          JOIN "tabs" t ON t.id = p."tabId"
+          WHERE t."paidAt" IS NOT NULL
+            AND t."paidAt" >= ${start}
+            AND t."paidAt" <= ${end}
+        ) AS combined_payments
         GROUP BY "paymentMethod"
         ORDER BY revenue DESC
       `;
@@ -2248,6 +2290,265 @@ export class DashboardController {
           prepTimeByItem: itemsWithPrepTime,
           // Alertas
           alerts
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /api/dashboard/menu/item/:id/metrics?start=...&end=...
+  getMenuItemMetrics = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { start: startParam, end: endParam } = req.query;
+      
+      const start = startParam ? new Date(startParam as string) : (() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+      })();
+
+      const end = endParam ? new Date(endParam as string) : new Date();
+
+      // Verificar se o item existe
+      const menuItem = await prisma.menuItem.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          category: true,
+          price: true,
+          available: true,
+          imageUrl: true,
+          createdAt: true,
+        }
+      });
+
+      if (!menuItem) {
+        return res.status(404).json({
+          success: false,
+          error: 'Item do cardápio não encontrado'
+        });
+      }
+
+      // Calcular período anterior para comparações
+      const duration = end.getTime() - start.getTime();
+      const previousStart = new Date(start.getTime() - duration);
+      const previousEnd = start;
+
+      // === 1) MÉTRICAS GERAIS DO ITEM ===
+      const salesData: any[] = await prisma.$queryRaw`
+        SELECT 
+          SUM(o.quantity) as "totalQuantity",
+          SUM(o."totalPrice") as "totalRevenue",
+          COUNT(DISTINCT o.id) as "ordersCount",
+          COUNT(DISTINCT o."tabId") as "uniqueTabs",
+          AVG(o.quantity) as "avgQuantityPerOrder"
+        FROM orders o
+        WHERE o."menuItemId" = ${id}
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+      `;
+
+      const sales = salesData[0] || {};
+      const totalQuantity = parseInt(sales.totalQuantity || 0);
+      const totalRevenue = parseFloat(sales.totalRevenue || 0);
+      const ordersCount = parseInt(sales.ordersCount || 0);
+      const uniqueTabs = parseInt(sales.uniqueTabs || 0);
+      const avgQuantityPerOrder = parseFloat(sales.avgQuantityPerOrder || 0);
+
+      // === 2) COMPARAÇÃO COM PERÍODO ANTERIOR ===
+      const previousSalesData: any[] = await prisma.$queryRaw`
+        SELECT 
+          SUM(o.quantity) as "totalQuantity",
+          SUM(o."totalPrice") as "totalRevenue",
+          COUNT(DISTINCT o.id) as "ordersCount"
+        FROM orders o
+        WHERE o."menuItemId" = ${id}
+          AND o."createdAt" >= ${previousStart}
+          AND o."createdAt" < ${previousEnd}
+      `;
+
+      const previousSales = previousSalesData[0] || {};
+      const previousQuantity = parseInt(previousSales.totalQuantity || 0);
+      const previousRevenue = parseFloat(previousSales.totalRevenue || 0);
+
+      const quantityChange = previousQuantity > 0 
+        ? ((totalQuantity - previousQuantity) / previousQuantity) * 100 
+        : 0;
+      const revenueChange = previousRevenue > 0 
+        ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 
+        : 0;
+
+      // === 3) TEMPO DE PREPARO ===
+      const prepTimeData: any[] = await prisma.$queryRaw`
+        SELECT 
+          AVG(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60) as "avgPrepMinutes",
+          MIN(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60) as "minPrepMinutes",
+          MAX(EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60) as "maxPrepMinutes",
+          COUNT(o.id) as "ordersWithTime"
+        FROM orders o
+        WHERE o."menuItemId" = ${id}
+          AND o."sentToKitchenAt" IS NOT NULL 
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+      `;
+
+      const prepTime = prepTimeData[0] || {};
+      const avgPrepMinutes = parseFloat(prepTime.avgPrepMinutes || 0);
+      const minPrepMinutes = parseFloat(prepTime.minPrepMinutes || 0);
+      const maxPrepMinutes = parseFloat(prepTime.maxPrepMinutes || 0);
+
+      // === 4) TAXA DE ATRASO ===
+      const SLA_MINUTES = 20;
+      const delayData: any[] = await prisma.$queryRaw`
+        SELECT 
+          COUNT(o.id) as "totalOrders",
+          COUNT(o.id) FILTER (
+            WHERE EXTRACT(EPOCH FROM (o."deliveredAt" - o."sentToKitchenAt"))/60 > ${SLA_MINUTES}
+          ) as "delayedOrders"
+        FROM orders o
+        WHERE o."menuItemId" = ${id}
+          AND o."sentToKitchenAt" IS NOT NULL 
+          AND o."deliveredAt" IS NOT NULL
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+      `;
+
+      const delay = delayData[0] || {};
+      const totalOrdersWithTime = parseInt(delay.totalOrders || 0);
+      const delayedOrders = parseInt(delay.delayedOrders || 0);
+      const delayPercentage = totalOrdersWithTime > 0 
+        ? (delayedOrders / totalOrdersWithTime) * 100 
+        : 0;
+
+      // === 5) DISTRIBUIÇÃO POR HORÁRIO ===
+      const hourlyData: any[] = await prisma.$queryRaw`
+        SELECT 
+          EXTRACT(HOUR FROM o."createdAt") as "hour",
+          SUM(o.quantity) as "totalQuantity",
+          SUM(o."totalPrice") as "totalRevenue",
+          COUNT(o.id) as "ordersCount"
+        FROM orders o
+        WHERE o."menuItemId" = ${id}
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY "hour"
+        ORDER BY "hour"
+      `;
+
+      const hourlyDistribution = hourlyData.map((h: any) => ({
+        hour: parseInt(h.hour || 0),
+        totalQuantity: parseInt(h.totalQuantity || 0),
+        totalRevenue: parseFloat(h.totalRevenue || 0),
+        ordersCount: parseInt(h.ordersCount || 0)
+      }));
+
+      // === 6) TENDÊNCIA DIÁRIA ===
+      const dailyData: any[] = await prisma.$queryRaw`
+        SELECT 
+          DATE(o."createdAt") as "date",
+          SUM(o.quantity) as "totalQuantity",
+          SUM(o."totalPrice") as "totalRevenue",
+          COUNT(o.id) as "ordersCount"
+        FROM orders o
+        WHERE o."menuItemId" = ${id}
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY "date"
+        ORDER BY "date"
+      `;
+
+      const dailyTrend = dailyData.map((d: any) => ({
+        date: d.date,
+        totalQuantity: parseInt(d.totalQuantity || 0),
+        totalRevenue: parseFloat(d.totalRevenue || 0),
+        ordersCount: parseInt(d.ordersCount || 0)
+      }));
+
+      // === 7) RANKING DO ITEM (comparado com outros da mesma categoria) ===
+      const categoryRanking: any[] = await prisma.$queryRaw`
+        SELECT 
+          mi.id as "itemId",
+          mi.name as "itemName",
+          SUM(o.quantity) as "totalQuantity",
+          SUM(o."totalPrice") as "totalRevenue"
+        FROM orders o
+        JOIN menu_items mi ON o."menuItemId" = mi.id
+        WHERE mi.category = ${menuItem.category}::"MenuCategory"
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" <= ${end}
+        GROUP BY mi.id, mi.name
+        ORDER BY "totalRevenue" DESC
+      `;
+
+      const rankInCategory = categoryRanking.findIndex(i => i.itemId === id) + 1;
+      const totalInCategory = categoryRanking.length;
+
+      // === 8) TAXA DE CONVERSÃO (quantas comandas que tem pelo menos 1 pedido deste item) ===
+      const totalTabsInPeriod = await prisma.tab.count({
+        where: {
+          createdAt: {
+            gte: start,
+            lte: end
+          }
+        }
+      });
+
+      const conversionRate = totalTabsInPeriod > 0 
+        ? (uniqueTabs / totalTabsInPeriod) * 100 
+        : 0;
+
+      // === RESPOSTA FINAL ===
+      res.json({
+        success: true,
+        data: {
+          item: {
+            id: menuItem.id,
+            name: menuItem.name,
+            description: menuItem.description,
+            category: menuItem.category,
+            price: parseFloat(menuItem.price.toString()),
+            available: menuItem.available,
+            imageUrl: menuItem.imageUrl,
+            createdAt: menuItem.createdAt
+          },
+          metrics: {
+            sales: {
+              totalQuantity,
+              totalRevenue,
+              ordersCount,
+              uniqueTabs,
+              avgQuantityPerOrder,
+              conversionRate
+            },
+            comparison: {
+              previousQuantity,
+              previousRevenue,
+              quantityChange,
+              revenueChange
+            },
+            prepTime: {
+              avgPrepMinutes,
+              minPrepMinutes,
+              maxPrepMinutes,
+              delayPercentage,
+              delayedOrders,
+              totalOrdersWithTime
+            },
+            ranking: {
+              rankInCategory,
+              totalInCategory,
+              categoryName: menuItem.category
+            },
+            trends: {
+              hourlyDistribution,
+              dailyTrend
+            }
+          }
         }
       });
     } catch (error) {

@@ -15,6 +15,8 @@ router.get('/', controller.getAll);
 router.get('/:id', controller.getById);
 router.get('/table/:tableId', controller.getByTableId);
 router.patch('/:id/close', validate(closeTabSchema), controller.close);
+// Admin-only: cancel a tab (keeps history)
+router.patch('/:id/cancel', authenticateToken, requireAdmin, controller.cancel);
 router.get('/:id/calculate', controller.calculate);
 router.get('/table/:tableId/calculate', controller.calculateTable);
 
@@ -27,7 +29,7 @@ router.post('/:id/request-bill', controller.requestBill);
 // Transfer account - move all orders from one tab to another
 router.post('/:id/transfer', authenticateToken, controller.transferAccount);
 
-// Admin-only: delete a tab
-router.delete('/:id', authenticateToken, requireAdmin, controller.delete);
+// Allow waiters (and admin) to delete a tab
+router.delete('/:id', authenticateToken, requireWaiter, controller.delete);
 
 export default router;

@@ -13,6 +13,7 @@ import DashboardFinance from './pages/DashboardFinance';
 import DashboardOperations from './pages/DashboardOperations';
 import DashboardKitchen from './pages/DashboardKitchen';
 import DashboardWaiters from './pages/DashboardWaiters';
+import DashboardReturns from './pages/DashboardReturns';
 import WaiterDetail from './pages/WaiterDetail';
 import DashboardMenu from './pages/DashboardMenu';
 import DashboardComandas from './pages/DashboardComandas';
@@ -98,6 +99,7 @@ function App() {
             <Route path="comandas" element={<DashboardComandas />} />
             <Route path="waiters" element={<DashboardWaiters />} />
             <Route path="waiters/:id" element={<WaiterDetail />} />
+            <Route path="returns" element={<DashboardReturns />} />
             <Route path="menu" element={<DashboardMenu />} />
           </Route>
         </Route>

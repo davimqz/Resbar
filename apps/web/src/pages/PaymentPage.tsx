@@ -1,18 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTab } from '../hooks/useTab';
+import { useTabCancellation } from '../hooks/useTabCancellation';
 import { useAuthStore } from '../store/authStore';
 import { UserRole } from '@resbar/shared';
 import { useMenuItem } from '../hooks/useMenuItem';
 import { useOrder } from '../hooks/useOrder';
-import { PaymentMethod, PAYMENT_METHOD_LABELS, DEFAULT_SERVICE_CHARGE_RATE, MenuCategory, MENU_CATEGORY_LABELS } from '@resbar/shared';
+import { PaymentMethod, PAYMENT_METHOD_LABELS, DEFAULT_SERVICE_CHARGE_RATE, MenuCategory, MENU_CATEGORY_LABELS, TabCancellationCategory, TAB_CANCELLATION_CATEGORY_LABELS } from '@resbar/shared';
 import formatCurrency from '../lib/formatCurrency';
 
 export function PaymentPage() {
   const { tabId } = useParams<{ tabId: string }>();
   const navigate = useNavigate();
-  const { useTabCalculation, useCloseTab } = useTab();
-  const { deleteTab } = useTab();
+  const { useTabCalculation, useCloseTab, deleteTab, cancelTab } = useTab();
+  const { createTabCancellationRequest, updateTabCancellationRequest } = useTabCancellation();
   const { user } = useAuthStore();
 
   const { data: calculation, isLoading } = useTabCalculation(tabId!);
@@ -29,6 +30,9 @@ export function PaymentPage() {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editingQuantity, setEditingQuantity] = useState<number>(1);
   const [editingNotes, setEditingNotes] = useState<string>('');
+  const [showCancelRequestModal, setShowCancelRequestModal] = useState(false);
+  const [cancelCategory, setCancelCategory] = useState<TabCancellationCategory>(TabCancellationCategory.OUTROS);
+  const [cancelReason, setCancelReason] = useState<string>('');
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [paidAmount, setPaidAmount] = useState<string>('');
@@ -86,6 +90,36 @@ export function PaymentPage() {
     } catch (error) {
       console.error('Erro ao processar pagamento:', error);
       alert('Erro ao processar pagamento. Tente novamente.');
+    }
+  };
+
+  const handleRequestCancellation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tabId) return;
+    try {
+      const created = await createTabCancellationRequest.mutateAsync({
+        tabId,
+        category: cancelCategory,
+        reason: cancelReason || undefined,
+      });
+
+      if (user?.role === UserRole.ADMIN) {
+        try {
+          await updateTabCancellationRequest.mutateAsync({ id: created.id, data: { status: 'APPROVED' } });
+          alert('Solicitação criada e aprovada. Comanda cancelada.');
+        } catch (err: any) {
+          alert(err.message || 'Erro ao aprovar solicitação de cancelamento');
+        }
+      } else {
+        alert('Solicitação de cancelamento enviada para aprovação do administrador');
+      }
+
+      setShowCancelRequestModal(false);
+      setCancelCategory(TabCancellationCategory.OUTROS);
+      setCancelReason('');
+      navigate(-1);
+    } catch (error: any) {
+      alert(error.message || 'Erro ao solicitar cancelamento');
     }
   };
 
@@ -180,14 +214,32 @@ export function PaymentPage() {
           </div>
 
           {/* Actions: add order + Formulário de pagamento */}
-          <div className="mt-4 mb-4 flex gap-2">
+          <div className="mt-4 mb-4 flex gap-2 flex-wrap">
             <button
               onClick={() => setShowAddOrder(true)}
               className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
             >
               + Adicionar Pedido
             </button>
+            {/* Garçom pode solicitar cancelamento (precisa aprovação admin) */}
+            {user?.role === UserRole.WAITER && (
+              <button
+                onClick={() => setShowCancelRequestModal(true)}
+                className="inline-flex items-center justify-center rounded-md bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:brightness-95"
+              >
+                Solicitar Cancelamento
+              </button>
+            )}
+            {/* Admin pode cancelar direto (sem aprovação) */}
             {user?.role === UserRole.ADMIN && (
+              <button
+                onClick={() => setShowCancelRequestModal(true)}
+                className="inline-flex items-center justify-center rounded-md bg-yellow-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:brightness-95"
+              >
+                Cancelar Comanda (ADM)
+              </button>
+            )}
+            {(user?.role === UserRole.ADMIN || user?.role === UserRole.WAITER) && (
               <button
                 onClick={async () => {
                   if (!confirm('Excluir comanda? Esta ação é irreversível.')) return;
@@ -201,7 +253,7 @@ export function PaymentPage() {
                 }}
                 className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700"
               >
-                Excluir Comanda (ADM)
+                Excluir Comanda
               </button>
             )}
           </div>
@@ -460,6 +512,68 @@ export function PaymentPage() {
             </div>
           )}
 
+          {/* Modal de Solicitação de Cancelamento */}
+          {showCancelRequestModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <h2 className="text-xl font-bold mb-4">Solicitar Cancelamento de Comanda</h2>
+                <form onSubmit={handleRequestCancellation} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Motivo do Cancelamento</label>
+                    <select
+                      value={cancelCategory}
+                      onChange={(e) => setCancelCategory(e.target.value as TabCancellationCategory)}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 border"
+                      required
+                    >
+                      {Object.entries(TAB_CANCELLATION_CATEGORY_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Descrição Detalhada (opcional)</label>
+                    <textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Descreva o motivo do cancelamento..."
+                      rows={4}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 border"
+                    />
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ Esta solicitação será enviada para aprovação do administrador.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-orange-500 text-white px-4 py-2 rounded hover:brightness-95"
+                    >
+                      Enviar Solicitação
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCancelRequestModal(false);
+                        setCancelCategory(TabCancellationCategory.OUTROS);
+                        setCancelReason('');
+                      }}
+                      className="px-4 py-2 border rounded hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

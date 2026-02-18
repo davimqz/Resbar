@@ -103,6 +103,7 @@ model Tab {
   person                    Person?
   orders                    Order[]
   waiterHistory             TabWaiterHistory[]
+  cancellationRequests      TabCancellationRequest[]
   
   @@map("tabs")
 }
@@ -152,6 +153,24 @@ model ReturnRequest {
   order        Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   
   @@map("return_requests")
+}
+
+// Solicitações de cancelamento de comandas
+model TabCancellationRequest {
+  id                String                        @id @default(cuid())
+  tabId             String
+  category          TabCancellationCategory
+  reason            String?                       // Motivo detalhado
+  requestedByUserId String                        // Usuário que solicitou
+  approvedByUserId  String?                       // Admin que aprovou/rejeitou
+  status            TabCancellationRequestStatus  @default(PENDING)
+  resolvedAt        DateTime?                     // Quando foi resolvida
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+  
+  tab               Tab                           @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  
+  @@map("tab_cancellation_requests")
 }
 
 // Itens do cardápio
@@ -227,6 +246,7 @@ enum Gender {
 enum TabStatus {
   OPEN
   CLOSED
+  CANCELLED
 }
 
 enum TabType {
@@ -276,4 +296,21 @@ enum ReturnRequestStatus {
 enum ReturnSourceType {
   COMANDA
   MESA
+}
+
+// Categoria de cancelamento de comanda
+enum TabCancellationCategory {
+  CLIENTE_DESISTIU        // Cliente desistiu/saiu sem consumir
+  ERRO_OPERACIONAL        // Erro na abertura da comanda
+  MESA_INCORRETA          // Comanda aberta na mesa errada
+  DUPLICADA               // Comanda duplicada
+  CLIENTE_INSATISFEITO    // Cliente insatisfeito com atendimento
+  OUTROS                  // Outros motivos
+}
+
+// Status da solicitação de cancelamento
+enum TabCancellationRequestStatus {
+  PENDING     // Aguardando aprovação do admin
+  APPROVED    // Aprovada pelo admin
+  REJECTED    // Rejeitada pelo admin
 }

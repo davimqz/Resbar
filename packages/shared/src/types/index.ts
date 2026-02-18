@@ -9,6 +9,7 @@ export enum TableStatus {
 export enum TabStatus {
   OPEN = 'OPEN',
   CLOSED = 'CLOSED',
+  CANCELLED = 'CANCELLED',
 }
 
 export enum TabType {
@@ -70,6 +71,21 @@ export enum ReturnRequestStatus {
 export enum ReturnSourceType {
   COMANDA = 'COMANDA',
   MESA = 'MESA',
+}
+
+export enum TabCancellationCategory {
+  CLIENTE_DESISTIU = 'CLIENTE_DESISTIU',
+  ERRO_OPERACIONAL = 'ERRO_OPERACIONAL',
+  MESA_INCORRETA = 'MESA_INCORRETA',
+  DUPLICADA = 'DUPLICADA',
+  CLIENTE_INSATISFEITO = 'CLIENTE_INSATISFEITO',
+  OUTROS = 'OUTROS',
+}
+
+export enum TabCancellationRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 // DTOs - Waiter
@@ -232,6 +248,32 @@ export interface UpdateReturnRequestDTO {
   resolvedById?: string;
   sourceType?: ReturnSourceType;
   sourceId?: string;
+}
+
+// DTOs - TabCancellationRequest
+export interface TabCancellationRequestDTO {
+  id: string;
+  tabId: string;
+  category: TabCancellationCategory;
+  reason: string | null;
+  requestedByUserId: string;
+  approvedByUserId: string | null;
+  status: TabCancellationRequestStatus;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  tab?: TabDTO;
+}
+
+export interface CreateTabCancellationRequestDTO {
+  tabId: string;
+  category: TabCancellationCategory;
+  reason?: string;
+}
+
+export interface UpdateTabCancellationRequestDTO {
+  status?: TabCancellationRequestStatus;
+  approvedByUserId?: string;
 }
 
 // DTOs - MenuItem

@@ -15,9 +15,8 @@ import DashboardKitchen from './pages/DashboardKitchen';
 import DashboardWaiters from './pages/DashboardWaiters';
 import WaiterDetail from './pages/WaiterDetail';
 import DashboardMenu from './pages/DashboardMenu';
-import DashboardOverview from './pages/DashboardOverview';
 import DashboardComandas from './pages/DashboardComandas';
-import DashboardReturns from './pages/DashboardReturns';
+import DashboardOverview from './pages/DashboardOverview';
 import { InventoryPage } from './pages/InventoryPage';
 import { UserRole } from '@resbar/shared';
 
@@ -96,10 +95,9 @@ function App() {
             <Route path="overview" element={<DashboardOverview />} />
             <Route path="operations" element={<DashboardOperations />} />
             <Route path="kitchen" element={<DashboardKitchen />} />
+            <Route path="comandas" element={<DashboardComandas />} />
             <Route path="waiters" element={<DashboardWaiters />} />
             <Route path="waiters/:id" element={<WaiterDetail />} />
-            <Route path="comandas" element={<DashboardComandas />} />
-            <Route path="returns" element={<DashboardReturns />} />
             <Route path="menu" element={<DashboardMenu />} />
           </Route>
         </Route>

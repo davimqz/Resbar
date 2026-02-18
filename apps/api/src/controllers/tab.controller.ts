@@ -211,6 +211,63 @@ export class TabController {
     }
   }
 
+  async cancel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+
+      const existingTab = await prisma.tab.findUnique({
+        where: { id },
+        select: { status: true, tableId: true },
+      });
+
+      if (!existingTab) {
+        throw new AppError(404, 'Comanda não encontrada');
+      }
+
+      if (existingTab.status === 'CLOSED') {
+        throw new AppError(400, 'Não é possível cancelar uma comanda fechada');
+      }
+
+      if ((existingTab.status as any) === 'CANCELLED') {
+        throw new AppError(400, 'Comanda já está cancelada');
+      }
+
+      const tab = await prisma.tab.update({
+        where: { id },
+        data: {
+          status: 'CANCELLED',
+          closedAt: new Date(),
+        },
+        include: {
+          person: true,
+          table: true,
+          orders: {
+            include: {
+              menuItem: true,
+            },
+          },
+        },
+      });
+
+      if (existingTab.tableId) {
+        const openTabsCount = await prisma.tab.count({
+          where: { tableId: existingTab.tableId, status: 'OPEN' },
+        });
+
+        if (openTabsCount === 0) {
+          await prisma.table.update({ where: { id: existingTab.tableId }, data: { status: 'AVAILABLE' } });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: tab,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async calculate(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;

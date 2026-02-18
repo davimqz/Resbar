@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTab } from '../hooks/useTab';
 import { useWaiter } from '../hooks/useWaiter';
+import { TabStatus } from '@resbar/shared';
 import formatCurrency from '../lib/formatCurrency';
 
 export default function DashboardComandas() {
@@ -12,6 +13,13 @@ export default function DashboardComandas() {
 
   const [waiterId, setWaiterId] = useState<string | 'all'>('all');
   const [tabIdFilter, setTabIdFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string | 'all'>('all');
+  // Applied filters (only updated when user clicks Search)
+  const [appliedWaiterId, setAppliedWaiterId] = useState<string | 'all'>('all');
+  const [appliedTabId, setAppliedTabId] = useState<string>('');
+  const [appliedStatus, setAppliedStatus] = useState<string | 'all'>('all');
+  const [appliedStart, setAppliedStart] = useState<string>('');
+  const [appliedEnd, setAppliedEnd] = useState<string>('');
   const [expanded, setExpanded] = useState<boolean>(false);
   const [start, setStart] = useState<string>('');
   const [end, setEnd] = useState<string>('');
@@ -22,32 +30,35 @@ export default function DashboardComandas() {
   const filtered = useMemo(() => {
     return tabs.filter((tab: any) => {
       // Filter by tab id (substring)
-      if (tabIdFilter) {
-        if (!tab.id.toLowerCase().includes(tabIdFilter.toLowerCase())) return false;
+      if (appliedTabId) {
+        if (!tab.id.toLowerCase().includes(appliedTabId.toLowerCase())) return false;
       }
       // Filter by waiter
-      if (waiterId !== 'all') {
-        const has = (tab.waiterHistory || []).some((h: any) => h.waiter?.id === waiterId);
+      if (appliedWaiterId !== 'all') {
+        const has = (tab.waiterHistory || []).some((h: any) => h.waiter?.id === appliedWaiterId);
         if (!has) return false;
       }
 
       // Filter by date range (createdAt)
-      if (start) {
-        const s = new Date(start);
+      if (appliedStart) {
+        const s = new Date(appliedStart);
         const created = new Date(tab.createdAt);
         if (created < s) return false;
       }
-      if (end) {
-        const e = new Date(end);
+      if (appliedEnd) {
+        const e = new Date(appliedEnd);
         // include whole day
         e.setHours(23, 59, 59, 999);
         const created = new Date(tab.createdAt);
         if (created > e) return false;
       }
 
+      // Filter by status
+      if (appliedStatus !== 'all' && tab.status !== appliedStatus) return false;
+
       return true;
     });
-  }, [tabs, waiterId, start, end]);
+  }, [tabs, appliedWaiterId, appliedStart, appliedEnd, appliedTabId, appliedStatus]);
 
   const visibleTabs = useMemo(() => {
     if (expanded) return filtered;
@@ -82,6 +93,20 @@ export default function DashboardComandas() {
           </div>
 
           <div>
+            <label className="block text-xs text-gray-600 mb-1">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="border rounded p-2 text-sm w-40"
+            >
+              <option value="all">Todas</option>
+              <option value={TabStatus.OPEN}>Aberta</option>
+              <option value={TabStatus.CLOSED}>Fechada</option>
+              <option value={TabStatus.CANCELLED}>Cancelada</option>
+            </select>
+          </div>
+
+          <div>
             <label className="block text-xs text-gray-600 mb-1">Início</label>
             <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="border rounded p-2 text-sm" />
           </div>
@@ -92,7 +117,27 @@ export default function DashboardComandas() {
           </div>
 
           <div className="flex items-end">
-            <button onClick={() => { setWaiterId('all'); setStart(''); setEnd(''); }} className="text-sm text-blue-600">Limpar</button>
+            <div className="flex gap-3 items-center">
+              <button
+                onClick={() => {
+                  // apply current inputs as active filters
+                  setAppliedWaiterId(waiterId);
+                  setAppliedTabId(tabIdFilter);
+                  setAppliedStatus(statusFilter);
+                  setAppliedStart(start);
+                  setAppliedEnd(end);
+                }}
+                className="inline-flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded text-sm hover:bg-indigo-700"
+              >
+                {/* Magnifying glass icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                </svg>
+                <span>Pesquisar</span>
+              </button>
+
+              <button onClick={() => { setWaiterId('all'); setStart(''); setEnd(''); setTabIdFilter(''); setStatusFilter('all'); setAppliedWaiterId('all'); setAppliedStart(''); setAppliedEnd(''); setAppliedTabId(''); setAppliedStatus('all'); }} className="text-sm text-blue-600">Limpar</button>
+            </div>
           </div>
         </div>
       </div>

@@ -279,19 +279,6 @@ export class MetricsController {
       const closedCount = Number((agg as any[])[0]?.closed_count ?? 0);
       const avgTicket = Number((agg as any[])[0]?.avg_ticket ?? 0);
 
-      // Taxa de serviço total arrecadada pelo garçom no período
-      const serviceChargeAgg = await prisma.$queryRaw`
-        SELECT SUM(COALESCE(t."serviceChargeAmount", 0)) AS total_service_charge
-        FROM tab_waiter_history h
-        JOIN "tabs" t ON t.id = h."tabId"
-        WHERE h."waiterId" = ${waiterId}
-          AND t."paidAt" IS NOT NULL
-          AND t."paidAt" >= ${start}
-          AND t."paidAt" <= ${end}
-          AND (h."removedAt" IS NULL OR h."removedAt" > t."paidAt")
-      `;
-      const totalServiceCharge = Number((serviceChargeAgg as any[])[0]?.total_service_charge ?? 0);
-
       // Average delivery time for orders in tabs served by waiter (seconds)
       // Only count orders created while waiter was responsible
       const avgDeliveryRow = await prisma.$queryRaw`
@@ -327,7 +314,7 @@ export class MetricsController {
       // Recent tabs (distinct) for this waiter
       // Only show tabs where waiter was responsible at payment (or still open)
       const recentTabsRaw = await prisma.$queryRaw`
-        SELECT DISTINCT t.id, t."createdAt", t."paidAt", t.total, t."paidAmount", t."closedAt", t."serviceChargeAmount"
+        SELECT DISTINCT t.id, t."createdAt", t."paidAt", t.total, t."paidAmount", t."closedAt"
         FROM tab_waiter_history h
         JOIN "tabs" t ON t.id = h."tabId"
         WHERE h."waiterId" = ${waiterId}
@@ -364,7 +351,6 @@ export class MetricsController {
         revenue,
         closedCount,
         avgTicket,
-        totalServiceCharge,
         avgDeliverySeconds,
         avgToPaySeconds,
         recentTabs: convertBigInt(recentTabs), // Already has ISO date strings

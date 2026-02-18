@@ -148,3 +148,20 @@ export const RETURN_REQUEST_STATUS_LABELS = {
   APPROVED: 'Aprovada',
   REJECTED: 'Rejeitada',
 } as const;
+
+// Labels para categorias de cancelamento de comanda
+export const TAB_CANCELLATION_CATEGORY_LABELS = {
+  CLIENTE_DESISTIU: 'Cliente Desistiu/Saiu',
+  ERRO_OPERACIONAL: 'Erro Operacional',
+  MESA_INCORRETA: 'Mesa Incorreta',
+  DUPLICADA: 'Comanda Duplicada',
+  CLIENTE_INSATISFEITO: 'Cliente Insatisfeito',
+  OUTROS: 'Outros Motivos',
+} as const;
+
+// Labels para status de solicitação de cancelamento
+export const TAB_CANCELLATION_REQUEST_STATUS_LABELS = {
+  PENDING: 'Aguardando Aprovação',
+  APPROVED: 'Aprovada',
+  REJECTED: 'Rejeitada',
+} as const;

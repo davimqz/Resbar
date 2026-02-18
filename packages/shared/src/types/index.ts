@@ -52,6 +52,26 @@ export enum Gender {
   OTHER = 'OTHER',
 }
 
+export enum ReturnCategory {
+  PREPARO = 'PREPARO',
+  OPERACIONAL = 'OPERACIONAL',
+  TEMPO_ESPERA = 'TEMPO_ESPERA',
+  QUALIDADE = 'QUALIDADE',
+  SEGURANCA = 'SEGURANCA',
+  COMERCIAL = 'COMERCIAL',
+}
+
+export enum ReturnRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+export enum ReturnSourceType {
+  COMANDA = 'COMANDA',
+  MESA = 'MESA',
+}
+
 // DTOs - Waiter
 export interface WaiterDTO {
   id: string;
@@ -176,6 +196,42 @@ export interface UpdateOrderDTO {
   quantity?: number;
   status?: OrderStatus;
   notes?: string;
+}
+
+// DTOs - ReturnRequest
+export interface ReturnRequestDTO {
+  id: string;
+  orderId: string;
+  category: ReturnCategory;
+  subcategory: string;
+  description: string | null;
+  imageUrl: string | null;
+  sourceType?: ReturnSourceType | null;
+  sourceId?: string | null;
+  status: ReturnRequestStatus;
+  createdById: string;
+  resolvedById: string | null;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  order?: OrderDTO;
+}
+
+export interface CreateReturnRequestDTO {
+  orderId: string;
+  category: ReturnCategory;
+  subcategory: string;
+  description?: string;
+  sourceType?: ReturnSourceType;
+  sourceId?: string;
+  imageUrl?: string;
+}
+
+export interface UpdateReturnRequestDTO {
+  status?: ReturnRequestStatus;
+  resolvedById?: string;
+  sourceType?: ReturnSourceType;
+  sourceId?: string;
 }
 
 // DTOs - MenuItem

@@ -10,6 +10,7 @@ import { useMenuItem } from '../hooks/useMenuItem';
 import { useWaiter } from '../hooks/useWaiter';
 import { useTab } from '../hooks/useTab';
 import { TableStatus, MenuCategory, MENU_CATEGORY_LABELS } from '@resbar/shared';
+import RequestReturnModal from '../components/RequestReturnModal';
 
 export default function TableDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +39,12 @@ export default function TableDetailPage() {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editingQuantity, setEditingQuantity] = useState<number>(1);
   const [editingNotes, setEditingNotes] = useState<string>('');
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnOrderId, setReturnOrderId] = useState<string>('');
+  const [returnOrderName, setReturnOrderName] = useState<string>('');
+  const [returnTabId, setReturnTabId] = useState<string | undefined>(undefined);
+  const [returnTableNumber, setReturnTableNumber] = useState<number | string | undefined>(undefined);
+
 
   const handleAddPerson = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,33 +303,52 @@ export default function TableDetailPage() {
                             <p className="text-lg font-bold text-gray-900 ml-4">
                               R$ {order.totalPrice.toFixed(2)}
                             </p>
-                            {user?.role === UserRole.ADMIN && (
-                              <div className="flex flex-col">
+                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.WAITER) && (
+                              <div className="flex flex-col gap-2">
+                                {/* Botão de Solicitar Devolução (Admin e Garçom) */}
                                 <button
                                   onClick={() => {
-                                    setEditingOrderId(order.id);
-                                    setEditingQuantity(order.quantity);
-                                    setEditingNotes(order.notes || '');
-                                    setShowEditOrder(true);
+                                    setReturnOrderId(order.id);
+                                    setReturnOrderName(order.menuItem.name);
+                                    setReturnTabId(tab.id);
+                                    setReturnTableNumber((table as any).number || undefined);
+                                    setShowReturnModal(true);
                                   }}
-                                  className="px-2 py-1 text-xs bg-yellow-400 text-black rounded hover:brightness-95"
+                                  className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600"
                                 >
-                                  Editar
+                                  Solicitar Devolução
                                 </button>
-                                <button
-                                  onClick={async () => {
-                                    if (!confirm('Excluir pedido?')) return;
-                                    try {
-                                      await deleteOrder.mutateAsync(order.id);
-                                      alert('Pedido excluído');
-                                    } catch (err: any) {
-                                      alert(err.message || 'Erro ao excluir pedido');
-                                    }
-                                  }}
-                                  className="mt-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                                >
-                                  Excluir
-                                </button>
+                                
+                                {/* Botões de Editar e Excluir (somente Admin) */}
+                                {user?.role === UserRole.ADMIN && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setEditingOrderId(order.id);
+                                        setEditingQuantity(order.quantity);
+                                        setEditingNotes(order.notes || '');
+                                        setShowEditOrder(true);
+                                      }}
+                                      className="px-2 py-1 text-xs bg-yellow-400 text-black rounded hover:brightness-95"
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm('Excluir pedido?')) return;
+                                        try {
+                                          await deleteOrder.mutateAsync(order.id);
+                                          alert('Pedido excluído');
+                                        } catch (err: any) {
+                                          alert(err.message || 'Erro ao excluir pedido');
+                                        }
+                                      }}
+                                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                    >
+                                      Excluir
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -476,6 +502,23 @@ export default function TableDetailPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal de Solicitação de Devolução */}
+      {showReturnModal && (
+        <RequestReturnModal
+          orderId={returnOrderId}
+          orderName={returnOrderName}
+          tabId={returnTabId}
+          tableNumber={returnTableNumber}
+          onClose={() => {
+            setShowReturnModal(false);
+            setReturnOrderId('');
+            setReturnOrderName('');
+            setReturnTabId(undefined);
+            setReturnTableNumber(undefined);
+          }}
+        />
       )}
     </div>
   );

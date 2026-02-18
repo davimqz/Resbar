@@ -485,6 +485,18 @@ export class DashboardController {
         }
       });
 
+      // Taxa de serviço total arrecadada no período
+      const totalServiceChargeResult = await prisma.$queryRaw`
+        SELECT ROUND(SUM(COALESCE(t."serviceChargeAmount", 0))::numeric, 2)::double precision AS total_service_charge
+        FROM tab_waiter_history h
+        JOIN "tabs" t ON t.id = h."tabId"
+        WHERE t."paidAt" IS NOT NULL
+          AND t."paidAt" >= ${start}
+          AND t."paidAt" <= ${end}
+          AND (h."removedAt" IS NULL OR h."removedAt" > t."paidAt")
+      `;
+      const totalServiceCharge = Number((totalServiceChargeResult as any[])[0]?.total_service_charge ?? 0);
+
       // Receita por hora de garçom (usando horas trabalhadas)
       const revenuePerHourResult = await prisma.$queryRaw`
         SELECT 
@@ -703,7 +715,8 @@ export class DashboardController {
             avgTicket,
             avgDeliveryTime,
             closedTabs,
-            revenuePerHour: revenuePerHour.reduce((sum, r) => sum + r.revenuePerHour, 0) / (revenuePerHour.length || 1)
+            revenuePerHour: revenuePerHour.reduce((sum, r) => sum + r.revenuePerHour, 0) / (revenuePerHour.length || 1),
+            totalServiceCharge
           },
           // Ranking
           waiterRanking: rankingWithHours,

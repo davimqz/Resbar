@@ -1,4 +1,5 @@
 import formatCurrency from '../../lib/formatCurrency';
+import { MENU_CATEGORY_LABELS } from '@resbar/shared';
 
 interface MatrixItem {
   itemId: string;
@@ -100,7 +101,7 @@ export default function MenuStrategicMatrix({ strategicMatrix, bottlenecks }: Me
                 <div key={idx} className="bg-white bg-opacity-60 rounded p-3 text-sm">
                   <div className="font-medium text-gray-900">{item.itemName}</div>
                   <div className="text-xs text-gray-600 mt-1 flex items-center justify-between">
-                    <span>{item.itemCategory}</span>
+                    <span>{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</span>
                     <span className={`${config.badge} px-2 py-0.5 rounded font-medium`}>
                       {item.totalQuantity} vendas
                     </span>
@@ -193,7 +194,7 @@ export default function MenuStrategicMatrix({ strategicMatrix, bottlenecks }: Me
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-gray-900">{item.itemName}</div>
-                        <div className="text-sm text-gray-600 mt-1">{item.itemCategory}</div>
+                        <div className="text-sm text-gray-600 mt-1">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</div>
                         <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <div className="text-xs text-gray-500">Volume</div>

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FaTrophy } from 'react-icons/fa';
 import formatCurrency from '../../lib/formatCurrency';
 import { Link } from 'react-router-dom';
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function WaiterRankingTable({ data }: Props) {
+  const [expanded, setExpanded] = useState(false);
   if (!data || data.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
@@ -63,7 +65,7 @@ export default function WaiterRankingTable({ data }: Props) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {data.map((waiter, index) => (
+            {(expanded ? data : data.slice(0, 5)).map((waiter, index) => (
               <tr key={waiter.waiterId} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
@@ -117,10 +119,21 @@ export default function WaiterRankingTable({ data }: Props) {
                   )}
                 </td>
               </tr>
-            ))}
+              ))}
           </tbody>
         </table>
       </div>
+        {/* Exibir mais / Mostrar menos */}
+        {data.length > 5 && (
+          <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-center">
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              {expanded ? 'Mostrar menos' : `Exibir mais (${data.length - 5} restantes)`}
+            </button>
+          </div>
+        )}
     </div>
   );
 }

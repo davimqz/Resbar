@@ -72,6 +72,11 @@ export default function DashboardWaiters() {
       sub: 'Por comanda paga' 
     },
     { 
+      label: '💵 Taxa de Serviço (10%)', 
+      value: formatCurrency(data.kpis.totalServiceCharge || 0), 
+      sub: 'Total arrecadado' 
+    },
+    { 
       label: '⚡ Tempo Médio Entrega', 
       value: data.kpis.avgDeliveryTime > 0 ? `${Math.round(data.kpis.avgDeliveryTime)} min` : '-', 
       sub: 'Da cozinha ao cliente' 

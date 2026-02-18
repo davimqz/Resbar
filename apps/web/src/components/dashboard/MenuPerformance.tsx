@@ -1,4 +1,5 @@
 import formatCurrency from '../../lib/formatCurrency';
+import { MENU_CATEGORY_LABELS } from '@resbar/shared';
 
 interface LowVolumeItem {
   itemId: string;
@@ -53,7 +54,7 @@ export default function MenuPerformance({ lowVolumeItems, unavailableItems }: Me
                   {lowVolumeItems.map((item, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.itemName}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{item.itemCategory}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</td>
                       <td className="px-4 py-3 text-sm text-right text-gray-700">
                         {formatCurrency(item.itemPrice)}
                       </td>
@@ -139,7 +140,7 @@ export default function MenuPerformance({ lowVolumeItems, unavailableItems }: Me
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">{item.itemCategory}</div>
+                        <div className="text-sm text-gray-600 mt-1">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</div>
                         <div className="mt-2 flex items-center gap-4 text-sm">
                           <div>
                             <span className="text-gray-500">Preço:</span>

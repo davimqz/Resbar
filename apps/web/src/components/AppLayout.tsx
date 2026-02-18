@@ -73,6 +73,8 @@ export default function AppLayout() {
           { path: '/dashboard/operations', label: 'Operação' },
           { path: '/dashboard/kitchen', label: 'Cozinha' },
           { path: '/dashboard/waiters', label: 'Garçons' },
+          { path: '/dashboard/comandas', label: 'Comandas' },
+          { path: '/dashboard/returns', label: 'Devoluções' },
           { path: '/dashboard/menu', label: 'Cardápio' },
         ],
       },

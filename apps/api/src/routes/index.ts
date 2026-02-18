@@ -11,6 +11,7 @@ import inventoryRoutes from './inventory.js';
 import uploadRoutes from './uploads.js';
 import adminRoutes from './admin.js';
 import metricsRoutes from './metrics.js';
+import returnRequestRoutes from './return-requests.js';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/metrics', metricsRoutes);
 router.use('/admin', adminRoutes);
+router.use('/return-requests', returnRequestRoutes);
 
 export default router;

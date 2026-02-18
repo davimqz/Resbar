@@ -127,8 +127,31 @@ model Order {
   
   tab                  Tab         @relation(fields: [tabId], references: [id], onDelete: Cascade)
   menuItem             MenuItem    @relation(fields: [menuItemId], references: [id])
+  returnRequests       ReturnRequest[]
   
   @@map("orders")
+}
+
+// Solicitações de devolução de pedidos
+model ReturnRequest {
+  id           String              @id @default(cuid())
+  orderId      String
+  category     ReturnCategory
+  subcategory  String              // Subcategoria específica (será validada no backend)
+  description  String?             // Descrição detalhada do problema
+  sourceType   ReturnSourceType?   // Normalized source: COMANDA or MESA
+  sourceId     String?             // Id of comanda or number of mesa
+  imageUrl     String?             // URL da imagem anexada
+  status       ReturnRequestStatus @default(PENDING)
+  createdById  String              // Usuário que criou a solicitação
+  resolvedById String?             // Usuário que resolveu a solicitação
+  resolvedAt   DateTime?           // Quando foi resolvida
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  
+  order        Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@map("return_requests")
 }
 
 // Itens do cardápio
@@ -232,4 +255,25 @@ enum PaymentMethod {
   CREDIT_CARD
   DEBIT_CARD
   PIX
+}
+
+enum ReturnCategory {
+  PREPARO           // Problemas com o preparo do prato
+  OPERACIONAL       // Erros operacionais
+  TEMPO_ESPERA      // Problemas com tempo de espera
+  QUALIDADE         // Problemas com qualidade
+  SEGURANCA         // Problemas de segurança alimentar
+  COMERCIAL         // Questões comerciais
+}
+
+enum ReturnRequestStatus {
+  PENDING     // Aguardando análise
+  APPROVED    // Aprovada
+  REJECTED    // Rejeitada
+}
+
+// Fonte normalizada da solicitação
+enum ReturnSourceType {
+  COMANDA
+  MESA
 }

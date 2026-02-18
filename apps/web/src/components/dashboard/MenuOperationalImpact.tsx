@@ -19,6 +19,8 @@ interface MenuOperationalImpactProps {
   itemDelayRate: ItemDelayRate[];
 }
 
+import { MENU_CATEGORY_LABELS } from '@resbar/shared';
+
 export default function MenuOperationalImpact({ categoryPrepTime, itemDelayRate }: MenuOperationalImpactProps) {
   const SLA_MINUTES = 20;
 
@@ -52,7 +54,7 @@ export default function MenuOperationalImpact({ categoryPrepTime, itemDelayRate 
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <div className="font-semibold text-gray-900">{cat.category}</div>
+                          <div className="font-semibold text-gray-900">{(MENU_CATEGORY_LABELS as any)[cat.category] || cat.category}</div>
                           {isSlow && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                               🚨 Lento
@@ -202,7 +204,7 @@ export default function MenuOperationalImpact({ categoryPrepTime, itemDelayRate 
                         }
                       >
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.itemName}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{item.itemCategory}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</td>
                         <td className="px-4 py-3 text-sm text-right text-gray-700">{item.totalOrders}</td>
                         <td className="px-4 py-3 text-sm text-right">
                           <span className={`font-semibold ${

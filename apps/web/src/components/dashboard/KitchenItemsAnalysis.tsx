@@ -7,6 +7,8 @@ interface MenuItem {
   totalQuantity: number;
 }
 
+import { MENU_CATEGORY_LABELS } from '@resbar/shared';
+
 interface KitchenItemsAnalysisProps {
   byPrepTime: MenuItem[];
   topSelling: MenuItem[];
@@ -36,7 +38,7 @@ export default function KitchenItemsAnalysis({ byPrepTime, topSelling, critical 
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 text-sm">{item.itemName}</h4>
                     {item.itemCategory && (
-                      <p className="text-xs text-gray-500">{item.itemCategory}</p>
+                      <p className="text-xs text-gray-500">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</p>
                     )}
                   </div>
                   <span className="text-2xl">⚠️</span>
@@ -88,7 +90,7 @@ export default function KitchenItemsAnalysis({ byPrepTime, topSelling, critical 
                     <div className="flex-1">
                       <h4 className="font-medium text-sm text-gray-900">{item.itemName}</h4>
                       {item.itemCategory && (
-                        <p className="text-xs text-gray-500">{item.itemCategory}</p>
+                        <p className="text-xs text-gray-500">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</p>
                       )}
                     </div>
                   </div>
@@ -130,7 +132,7 @@ export default function KitchenItemsAnalysis({ byPrepTime, topSelling, critical 
                     <div className="flex-1">
                       <h4 className="font-medium text-sm text-gray-900">{item.itemName}</h4>
                       {item.itemCategory && (
-                        <p className="text-xs text-gray-500">{item.itemCategory}</p>
+                        <p className="text-xs text-gray-500">{(MENU_CATEGORY_LABELS as any)[item.itemCategory] || item.itemCategory}</p>
                       )}
                     </div>
                   </div>

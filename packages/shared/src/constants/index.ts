@@ -84,3 +84,67 @@ export const DEFAULT_SERVICE_CHARGE_RATE = 0.1;
 
 // Duração do intervalo do garçom (1 hora em milissegundos)
 export const WAITER_BREAK_DURATION_MS = 60 * 60 * 1000;
+
+// Labels para categorias de devolução
+export const RETURN_CATEGORY_LABELS = {
+  PREPARO: 'Preparo',
+  OPERACIONAL: 'Operacional',
+  TEMPO_ESPERA: 'Tempo de Espera',
+  QUALIDADE: 'Qualidade',
+  SEGURANCA: 'Segurança',
+  COMERCIAL: 'Comercial',
+} as const;
+
+// Subcategorias de devolução por categoria
+export const RETURN_SUBCATEGORIES = {
+  PREPARO: [
+    'Ponto da carne errado',
+    'Prato frio',
+    'Prato queimado',
+    'Excesso de sal',
+    'Falta de tempero',
+    'Ingrediente faltando',
+    'Molho errado',
+    'Montagem diferente do padrão',
+    'Textura inadequada',
+  ],
+  OPERACIONAL: [
+    'Item errado entregue',
+    'Adicional não incluído',
+    'Sem alergênico solicitado',
+    'Tamanho errado',
+    'Bebida trocada',
+    'Pedido duplicado',
+  ],
+  TEMPO_ESPERA: [
+    'Demora excessiva',
+    'Prato chegou muito depois dos outros',
+    'Pedido perdido',
+  ],
+  QUALIDADE: [
+    'Não gostou do sabor',
+    'Aparência diferente da foto',
+    'Porção menor que o esperado',
+    'Ingrediente não agradou',
+    'Cheiro estranho',
+  ],
+  SEGURANCA: [
+    'Corpo estranho no prato',
+    'Suspeita de alimento estragado',
+    'Reação alérgica',
+    'Higiene inadequada percebida',
+  ],
+  COMERCIAL: [
+    'Cliente mudou de ideia',
+    'Cancelamento antes do preparo',
+    'Pedido feito errado pelo próprio cliente',
+    'Erro em promoção/desconto',
+  ],
+} as const;
+
+// Labels para status de solicitação de devolução
+export const RETURN_REQUEST_STATUS_LABELS = {
+  PENDING: 'Pendente',
+  APPROVED: 'Aprovada',
+  REJECTED: 'Rejeitada',
+} as const;

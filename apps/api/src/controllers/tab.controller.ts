@@ -15,6 +15,11 @@ export class TabController {
               menuItem: true,
             },
           },
+          waiterHistory: {
+            include: {
+              waiter: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });

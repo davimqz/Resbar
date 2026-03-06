@@ -9,7 +9,7 @@
     "dev:web": "pnpm --filter web dev",
     "db:migrate": "pnpm --filter database migrate:dev",
     "db:studio": "pnpm --filter database studio",
-    "build": "pnpm --filter api build && pnpm --filter web build",
+    "build": "pnpm --filter @resbar/shared build && pnpm --filter api build && pnpm --filter web build",
     "lint": "pnpm --recursive lint",
     "type-check": "pnpm --recursive type-check"
   },
